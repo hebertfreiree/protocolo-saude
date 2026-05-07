@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocolo Completo — Hebert</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#0c0c10;
+  color:#e0e0ee;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:15px;
+  line-height:1.6;
+  padding-bottom:60px;
+}
+
+/* HERO */
+.hero {
+  background:linear-gradient(135deg,#0d1b2a 0%,#1b2838 50%,#0d2137 100%);
+  padding:36px 20px 24px;
+  text-align:center;
+  border-bottom:1px solid #1a3a5c;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before {
+  content:'';
+  position:absolute;
+  top:-60px; left:-60px; right:-60px; bottom:-60px;
+  background:radial-gradient(circle at 30% 50%,rgba(34,102,204,0.08) 0%,transparent 60%),
+             radial-gradient(circle at 70% 50%,rgba(34,170,102,0.05) 0%,transparent 60%);
+}
+.hero h1 { font-size:22px; font-weight:800; color:#fff; margin-bottom:6px; position:relative; }
+.hero .sub { font-size:13px; color:#7a9ab8; position:relative; }
+.hero .stats { display:flex; justify-content:center; gap:24px; margin-top:16px; position:relative; }
+.hero-stat { text-align:center; }
+.hero-stat .val { font-size:20px; font-weight:800; color:#4da6ff; }
+.hero-stat .lbl { font-size:10px; color:#557799; text-transform:uppercase; letter-spacing:1px; }
+
+/* TABS */
+.tabs {
+  display:flex; overflow-x:auto; gap:6px;
+  padding:14px 16px 0; scrollbar-width:none;
+  background:#0c0c10; position:sticky; top:0; z-index:100;
+  border-bottom:1px solid #151520;
+}
+.tabs::-webkit-scrollbar { display:none; }
+.tab-btn {
+  flex-shrink:0;
+  padding:8px 14px;
+  border-radius:8px 8px 0 0;
+  border:1px solid #1e2a38; border-bottom:none;
+  background:#131320;
+  color:#6688aa;
+  font-size:12px; font-weight:700;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  letter-spacing:0.3px;
+}
+.tab-btn.active { background:#181830; border-color:#2255aa; color:#4da6ff; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* SECTION */
+.section { padding:20px 16px 0; }
+.sec-title {
+  font-size:11px; font-weight:800; letter-spacing:2px;
+  text-transform:uppercase; color:#336699;
+  margin-bottom:14px; padding-bottom:8px;
+  border-bottom:1px solid #181828;
+}
+
+/* CARDS */
+.card {
+  background:#131320;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:12px;
+  border:1px solid #1a1a2e;
+}
+.card-red { border-left:3px solid #cc2222; }
+.card-orange { border-left:3px solid #cc7700; }
+.card-blue { border-left:3px solid #2266cc; }
+.card-green { border-left:3px solid #229966; }
+.card-purple { border-left:3px solid #8833cc; }
+.card-teal { border-left:3px solid #119988; }
+
+.card-h { font-size:15px; font-weight:700; color:#fff; margin-bottom:8px; }
+.card-sub { font-size:12px; color:#557799; margin-bottom:10px; }
+.card-body { font-size:13.5px; color:#9aacbf; line-height:1.75; }
+.card-body strong { color:#d0dced; }
+.card-body b { color:#4da6ff; }
+
+/* BADGE */
+.badge {
+  display:inline-block; font-size:10px; font-weight:800;
+  padding:3px 9px; border-radius:20px;
+  text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px;
+}
+.b-red { background:#2a0808; color:#ff6b6b; }
+.b-orange { background:#2a1400; color:#ffaa44; }
+.b-green { background:#082a14; color:#44dd88; }
+.b-blue { background:#082040; color:#4da6ff; }
+.b-purple { background:#1a0830; color:#cc88ff; }
+
+/* PRIORITY LIST */
+.pri-item {
+  display:flex; gap:12px; align-items:flex-start;
+  padding:12px 0; border-bottom:1px solid #161622;
+}
+.pri-item:last-child { border-bottom:none; }
+.pri-num {
+  min-width:28px; height:28px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800;
+  flex-shrink:0;
+}
+.num-red { background:#2a0808; color:#ff6b6b; }
+.num-orange { background:#2a1400; color:#ffaa44; }
+.num-green { background:#082a14; color:#44dd88; }
+.pri-content {}
+.pri-title { font-size:14px; font-weight:700; color:#dde8f5; }
+.pri-desc { font-size:13px; color:#7a90aa; margin-top:2px; line-height:1.5; }
+
+/* MEAL PLAN */
+.meal-block {
+  background:#131320; border-radius:12px;
+  margin-bottom:10px; overflow:hidden;
+}
+.meal-header {
+  background:#181830; padding:12px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.meal-time { font-size:13px; font-weight:800; color:#4da6ff; }
+.meal-kcal { font-size:11px; color:#446688; }
+.meal-body { padding:12px 16px; }
+.meal-item {
+  display:flex; justify-content:space-between;
+  padding:5px 0; border-bottom:1px solid #161622;
+  font-size:13.5px;
+}
+.meal-item:last-child { border-bottom:none; }
+.meal-food { color:#c0d0e0; }
+.meal-macro { font-size:11px; color:#446688; text-align:right; }
+.meal-note { font-size:12px; color:#336655; margin-top:8px; font-style:italic; }
+
+/* MACRO SUMMARY */
+.macro-row {
+  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  gap:8px; margin-bottom:12px;
+}
+.macro-box {
+  background:#131320; border-radius:10px;
+  padding:12px 8px; text-align:center;
+}
+.macro-val { font-size:20px; font-weight:800; color:#fff; }
+.macro-unit { font-size:10px; color:#446688; }
+.macro-lbl { font-size:11px; color:#557799; margin-top:2px; }
+.macro-val.p { color:#4da6ff; }
+.macro-val.f { color:#ffaa44; }
+.macro-val.c { color:#44dd88; }
+.macro-val.k { color:#cc88ff; }
+
+/* EXERCISE BLOCKS */
+.exercise-day {
+  background:#131320; border-radius:12px;
+  margin-bottom:10px; overflow:hidden;
+}
+.ex-day-header {
+  background:#181830; padding:12px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.ex-day-title { font-size:14px; font-weight:700; color:#fff; }
+.ex-day-tag { font-size:11px; color:#446688; }
+.ex-day-body { padding:12px 16px; }
+.ex-item {
+  padding:8px 0; border-bottom:1px solid #161622;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.ex-item:last-child { border-bottom:none; }
+.ex-num { font-size:12px; color:#446688; min-width:20px; padding-top:1px; }
+.ex-name { font-size:14px; color:#c8d8e8; font-weight:600; }
+.ex-sets { font-size:12px; color:#557799; margin-top:2px; }
+
+/* CARDIO */
+.cardio-block {
+  background:#0e1e16; border:1px solid #1a3a28;
+  border-radius:12px; padding:14px 16px; margin-bottom:10px;
+}
+.cardio-title { font-size:14px; font-weight:700; color:#44dd88; margin-bottom:6px; }
+.cardio-body { font-size:13px; color:#8ab89a; line-height:1.7; }
+
+/* SCHEDULE */
+.sched-item {
+  display:flex; gap:12px; align-items:flex-start;
+  padding:10px 0; border-bottom:1px solid #161622;
+}
+.sched-item:last-child { border-bottom:none; }
+.sched-time {
+  min-width:58px; font-size:11px; font-weight:800;
+  color:#4da6ff; text-transform:uppercase; padding-top:2px;
+}
+.sched-action { font-size:13.5px; color:#bbc8d8; line-height:1.5; }
+.sched-action strong { color:#dde8f5; }
+.sched-action .tag {
+  display:inline-block; font-size:10px; font-weight:700;
+  padding:1px 7px; border-radius:10px; margin-left:4px;
+  vertical-align:middle;
+}
+.tag-med { background:#1a3a0a; color:#66cc44; }
+.tag-supl { background:#0a1a3a; color:#4499ff; }
+.tag-food { background:#2a1a00; color:#ffaa44; }
+.tag-treino { background:#1a002a; color:#cc88ff; }
+.tag-sleep { background:#00152a; color:#44aaff; }
+
+/* FOOD TABLE */
+.food-sec { margin-bottom:16px; }
+.food-sec-title {
+  font-size:11px; font-weight:800; color:#229966;
+  text-transform:uppercase; letter-spacing:1.2px;
+  margin-bottom:8px;
+}
+.food-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.food-chip {
+  background:#131320; border-radius:8px;
+  padding:8px 10px; font-size:13px; color:#a0b8c8;
+}
+.food-chip .why { font-size:10px; color:#446688; display:block; margin-top:1px; }
+
+/* PROGRESS BARS */
+.prog-item { margin-bottom:14px; }
+.prog-header { display:flex; justify-content:space-between; margin-bottom:4px; }
+.prog-name { font-size:13px; color:#9ab8cc; }
+.prog-vals { font-size:12px; }
+.prog-current { color:#ffaa44; font-weight:700; }
+.prog-target { color:#446688; }
+.prog-bar-bg { background:#1a1a2a; border-radius:10px; height:6px; overflow:hidden; }
+.prog-bar { height:6px; border-radius:10px; }
+
+/* MED TABLE */
+.med-row {
+  padding:12px 0; border-bottom:1px solid #161622;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.med-row:last-child { border-bottom:none; }
+.med-icon { font-size:20px; min-width:30px; }
+.med-name { font-size:14px; font-weight:700; color:#dde8f5; margin-bottom:2px; }
+.med-dose { font-size:11px; color:#446688; margin-bottom:4px; }
+.med-info { font-size:13px; color:#8a9ab8; line-height:1.5; }
+.med-alert { font-size:12px; color:#cc8844; margin-top:4px; }
+
+/* RULES */
+.rule-item {
+  display:flex; gap:10px; padding:9px 0;
+  border-bottom:1px solid #161622; align-items:center;
+}
+.rule-item:last-child { border-bottom:none; }
+.rule-icon { font-size:16px; }
+.rule-text { font-size:13.5px; color:#9ab0c8; }
+.rule-text strong { color:#d0e0f0; }
+
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>⚡ Protocolo Completo — Hebert</h1>
+  <p class="sub">Nutrição + Treino + Suplementos + Rotina • Baseado em 71 páginas de exames</p>
+  <div class="stats">
+    <div class="hero-stat"><div class="val">96kg</div><div class="lbl">Peso</div></div>
+    <div class="hero-stat"><div class="val">1,77m</div><div class="lbl">Altura</div></div>
+    <div class="hero-stat"><div class="val">20%</div><div class="lbl">Gordura</div></div>
+    <div class="hero-stat"><div class="val">32</div><div class="lbl">Anos</div></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="visao">🎯 Visão</button>
+  <button class="tab-btn" data-tab="nutricao">🥩 Nutrição</button>
+  <button class="tab-btn" data-tab="treino">🏋️ Treino</button>
+  <button class="tab-btn" data-tab="rotina">⏰ Rotina</button>
+  <button class="tab-btn" data-tab="supl">💊 Suplementos</button>
+  <button class="tab-btn" data-tab="meds">💉 Medicamentos</button>
+</div>
+
+<!-- ===== VISÃO GERAL ===== -->
+<div class="tab-panel active" id="tab-visao">
+  <div class="section">
+    <div class="sec-title">Diagnóstico Rápido</div>
+
+    <div class="macro-row">
+      <div class="macro-box">
+        <div class="macro-val p">3</div>
+        <div class="macro-lbl">Urgentes</div>
+      </div>
+      <div class="macro-box">
+        <div class="macro-val f">6</div>
+        <div class="macro-lbl">Alterados</div>
+      </div>
+      <div class="macro-box">
+        <div class="macro-val c">5</div>
+        <div class="macro-lbl">Borderline</div>
+      </div>
+      <div class="macro-box">
+        <div class="macro-val k">18</div>
+        <div class="macro-lbl">Ótimos</div>
+      </div>
+    </div>
+
+    <div class="sec-title">Prioridades em Ordem</div>
+
+    <div class="card">
+      <div class="pri-item">
+        <div class="pri-num num-red">1</div>
+        <div class="pri-content">
+          <div class="pri-title">🫘 Proteger os rins</div>
+          <div class="pri-desc">Creatinina 1,54 + eTFG 61 — crônico. Tudo que você faz (dieta, treino, suplementos) precisa respeitar esse limite primeiro.</div>
+        </div>
+      </div>
+      <div class="pri-item">
+        <div class="pri-num num-red">2</div>
+        <div class="pri-content">
+          <div class="pri-title">🩸 Investigar leucopenia</div>
+          <div class="pri-desc">3.060 leucócitos — crônico e piorando. Só médico (hematologista) resolve. Suplementos de imunidade ajudam mas não são suficientes.</div>
+        </div>
+      </div>
+      <div class="pri-item">
+        <div class="pri-num num-red">3</div>
+        <div class="pri-content">
+          <div class="pri-title">❤️ Reduzir risco cardiovascular</div>
+          <div class="pri-desc">LDL 144 + homocisteína 17,5 + HDL 44. Já está em rosuvastatina + ezetimiba. Dieta + ômega 3 + metilfolato amplificam o efeito.</div>
+        </div>
+      </div>
+      <div class="pri-item">
+        <div class="pri-num num-orange">4</div>
+        <div class="pri-content">
+          <div class="pri-title">⚗️ Corrigir deficiências</div>
+          <div class="pri-desc">Vitamina D 28,5 + Vitamina C 0,21 + Folato 3,80 — os três corrigem com suplementação que você já começou.</div>
+        </div>
+      </div>
+      <div class="pri-item">
+        <div class="pri-num num-orange">5</div>
+        <div class="pri-content">
+          <div class="pri-title">📉 Reduzir gordura corporal</div>
+          <div class="pri-desc">De 20% para ~14–15%. Isso sozinho melhora: SHBG (50→~35), insulina/HOMA, HDL, e testosterona livre disponível.</div>
+        </div>
+      </div>
+      <div class="pri-item">
+        <div class="pri-num num-green">6</div>
+        <div class="pri-content">
+          <div class="pri-title">💪 Harmonização corporal</div>
+          <div class="pri-desc">Objetivo estético: trapézio, peito, abdômen. Consequência natural do protocolo de treino + dieta.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">O Que Resolve o Quê</div>
+    <div class="card card-blue">
+      <div class="card-body">
+        <strong>Dieta</strong> → LDL ↓, Triglicerídeos ↓, Glicose ↓, GGT ↓, Rim protegido<br>
+        <strong>Treino aeróbico</strong> → HDL ↑, Insulina ↓, SHBG ↓, Triglicerídeos ↓<br>
+        <strong>Musculação</strong> → Insulina ↓, SHBG ↓, Testosterona livre ↑, Composição corporal<br>
+        <strong>Metilfolato</strong> → Homocisteína ↓, Folato ↑<br>
+        <strong>D3+K2</strong> → Vitamina D ↑, PTH ↓<br>
+        <strong>Ômega 3</strong> → Triglicerídeos ↓, HDL ↑, Inflamação ↓, complementa estatina<br>
+        <strong>Vitamina C</strong> → Imunidade ↑, Colágeno, Antioxidante<br>
+        <strong>Zinco</strong> → Imunidade ↑, SHBG ↓<br>
+        <strong>Médico (urgente)</strong> → Leucopenia, Rim, Prolactina, dose Rosuvastatina
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NUTRIÇÃO ===== -->
+<div class="tab-panel" id="tab-nutricao">
+  <div class="section">
+    <div class="sec-title">Macros Diários — Recomposição Corporal</div>
+
+    <div class="macro-row">
+      <div class="macro-box">
+        <div class="macro-val k">2.400</div>
+        <div class="macro-unit">kcal/dia</div>
+        <div class="macro-lbl">Calorias</div>
+      </div>
+      <div class="macro-box">
+        <div class="macro-val p">150g</div>
+        <div class="macro-unit">proteína</div>
+        <div class="macro-lbl">1,55g/kg</div>
+      </div>
+      <div class="macro-box">
+        <div class="macro-val f">80g</div>
+        <div class="macro-unit">gordura</div>
+        <div class="macro-lbl">Boa gordura</div>
+      </div>
+      <div class="macro-box">
+        <div class="macro-val c">290g</div>
+        <div class="macro-unit">carboidrato</div>
+        <div class="macro-lbl">Baixo IG</div>
+      </div>
+    </div>
+
+    <div class="card card-orange">
+      <div class="card-h">⚠️ Regra do Rim — Não Negociável</div>
+      <div class="card-body">
+        Máximo <strong>155g de proteína/dia</strong> (1,6g/kg). Acima disso você sobrecarrega a creatinina.<br>
+        Mínimo <strong>3 litros de água/dia</strong> — fundamental com eTFG 61.<br>
+        <strong>Zero anti-inflamatórios</strong> (ibuprofeno, nimesulida) sem orientação médica.
+      </div>
+    </div>
+
+    <div class="sec-title">Plano Alimentar Completo</div>
+
+    <!-- CAFÉ DA MANHÃ -->
+    <div class="meal-block">
+      <div class="meal-header">
+        <div class="meal-time">☀️ 07h30 — Café da manhã</div>
+        <div class="meal-kcal">~550 kcal</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-item">
+          <span class="meal-food">Ovos mexidos (3 ovos inteiros)</span>
+          <span class="meal-macro">18g prot | 15g gord</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Aveia em flocos (60g)</span>
+          <span class="meal-macro">8g prot | 40g carb</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Baal-food">Banana (1 média) ou frutas vermelhas</span>
+          <span class="meal-macro">20g carb</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Café preto sem açúcar</span>
+          <span class="meal-macro">—</span>
+        </div>
+        <p class="meal-note">💊 Neste momento: Lisdexanfetamina + Lavitan CDZE + Metilfolato</p>
+      </div>
+    </div>
+
+    <!-- LANCHE MANHÃ -->
+    <div class="meal-block">
+      <div class="meal-header">
+        <div class="meal-time">🍎 10h30 — Lanche manhã</div>
+        <div class="meal-kcal">~250 kcal</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-item">
+          <span class="meal-food">Iogurte grego natural (170g)</span>
+          <span class="meal-macro">17g prot | 5g gord</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Castanha-do-pará (2 unidades)</span>
+          <span class="meal-macro">Selênio natural + gord boa</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Frutas vermelhas (morangos/mirtilos)</span>
+          <span class="meal-macro">Antioxidante + vitamina C</span>
+        </div>
+        <p class="meal-note">💧 Beba 500ml de água até o almoço</p>
+      </div>
+    </div>
+
+    <!-- ALMOÇO -->
+    <div class="meal-block">
+      <div class="meal-header">
+        <div class="meal-time">🍽️ 13h00 — Almoço</div>
+        <div class="meal-kcal">~700 kcal</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-item">
+          <span class="meal-food">Frango grelhado ou peixe (160g)</span>
+          <span class="meal-macro">40g prot | 5g gord</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Arroz integral (120g cozido)</span>
+          <span class="meal-macro">4g prot | 30g carb</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Feijão ou lentilha (100g cozido)</span>
+          <span class="meal-macro">8g prot | 20g carb | fibra</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Salada: espinafre + tomate + cenoura</span>
+          <span class="meal-macro">Folato natural + vitamina C</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Azeite extra virgem (1 col. sopa)</span>
+          <span class="meal-macro">14g gord boa</span>
+        </div>
+        <p class="meal-note">💊 Neste momento: D3+K2 (10 gotas) + Ômega 3 (2 cápsulas)</p>
+      </div>
+    </div>
+
+    <!-- PRÉ-TREINO -->
+    <div class="meal-block">
+      <div class="meal-header">
+        <div class="meal-time">⚡ 16h00 — Pré-treino</div>
+        <div class="meal-kcal">~300 kcal</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-item">
+          <span class="meal-food">Batata-doce (100g) ou banana</span>
+          <span class="meal-macro">25g carb (energia)</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Queijo cottage (80g) ou ovo cozido</span>
+          <span class="meal-macro">15g prot</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Amêndoas ou nozes (15g)</span>
+          <span class="meal-macro">Gord boa + magnésio</span>
+        </div>
+        <p class="meal-note">⏱️ Comer 60–90 min antes do treino. 500ml de água antes de treinar.</p>
+      </div>
+    </div>
+
+    <!-- PÓS-TREINO -->
+    <div class="meal-block">
+      <div class="meal-header">
+        <div class="meal-time">🏋️ 19h00 — Pós-treino</div>
+        <div class="meal-kcal">~400 kcal</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-item">
+          <span class="meal-food">Whey Isolado (1 scoop = 25g) OU atum (150g)</span>
+          <span class="meal-macro">25–35g prot</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Quinoa cozida (80g) ou batata-doce</span>
+          <span class="meal-macro">25g carb</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Brócolis ou couve no vapor</span>
+          <span class="meal-macro">Folato + vitamina K</span>
+        </div>
+        <p class="meal-note">⚠️ Whey máx 1 scoop/dia por causa do rim. Atum em água (sem sal).</p>
+      </div>
+    </div>
+
+    <!-- JANTAR -->
+    <div class="meal-block">
+      <div class="meal-header">
+        <div class="meal-time">🌙 20h30 — Jantar</div>
+        <div class="meal-kcal">~400 kcal</div>
+      </div>
+      <div class="meal-body">
+        <div class="meal-item">
+          <span class="meal-food">Salmão (120g) ou sardinha (150g)</span>
+          <span class="meal-macro">30g prot | EPA+DHA natural</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Legumes refogados no azeite</span>
+          <span class="meal-macro">Fibra + micronutrientes</span>
+        </div>
+        <div class="meal-item">
+          <span class="meal-food">Abacate (½ unidade)</span>
+          <span class="meal-macro">Gordura boa + HDL</span>
+        </div>
+        <p class="meal-note">💊 D3+K2 (5 gotas) + Ômega 3 (1 cápsula) com este jantar</p>
+      </div>
+    </div>
+
+    <div class="sec-title">Alimentos Prioritários Para Seus Exames</div>
+    <div class="card card-green">
+      <div class="food-sec">
+        <div class="food-sec-title">⬇️ Reduz LDL + Triglicerídeos</div>
+        <div class="food-grid">
+          <div class="food-chip">Aveia<span class="why">Beta-glucana bloqueia colesterol</span></div>
+          <div class="food-chip">Salmão/sardinha<span class="why">EPA+DHA natural</span></div>
+          <div class="food-chip">Feijão/lentilha<span class="why">Fibra solúvel</span></div>
+          <div class="food-chip">Abacate<span class="why">Mono-insaturada</span></div>
+          <div class="food-chip">Azeite extra virgem<span class="why">Polifenóis + oleico</span></div>
+          <div class="food-chip">Nozes/amêndoas<span class="why">Ômega 3 vegetal</span></div>
+        </div>
+      </div>
+      <div class="food-sec">
+        <div class="food-sec-title">🧠 Reduz Homocisteína</div>
+        <div class="food-grid">
+          <div class="food-chip">Espinafre/couve<span class="why">Folato natural</span></div>
+          <div class="food-chip">Brócolis<span class="why">Folato + vitamina C</span></div>
+          <div class="food-chip">Ovo (gema)<span class="why">B12 + colina</span></div>
+          <div class="food-chip">Fígado (1x/semana)<span class="why">B12 + folato máximos</span></div>
+        </div>
+      </div>
+      <div class="food-sec">
+        <div class="food-sec-title">🫘 Protege Rim</div>
+        <div class="food-grid">
+          <div class="food-chip">Água (3L+)<span class="why">Obrigatório</span></div>
+          <div class="food-chip">Frutas vermelhas<span class="why">Antioxidante renal</span></div>
+          <div class="food-chip">Repolho, couve-flor<span class="why">Baixo potássio</span></div>
+          <div class="food-chip">Azeite<span class="why">Anti-inflamatório</span></div>
+        </div>
+      </div>
+      <div class="food-sec">
+        <div class="food-sec-title">🛡️ Sistema Imune (Leucopenia)</div>
+        <div class="food-grid">
+          <div class="food-chip">Laranja/acerola<span class="why">Vitamina C natural</span></div>
+          <div class="food-chip">Castanha-do-pará (2/dia)<span class="why">Selênio máximo</span></div>
+          <div class="food-chip">Gengibre/cúrcuma<span class="why">Anti-inflamatório</span></div>
+          <div class="food-chip">Alho cru<span class="why">Imunomodulador</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">O Que Cortar</div>
+    <div class="card card-red">
+      <div class="card-body">
+        <strong>🚫 Álcool</strong> — depleta folato, eleva GGT, prejudica rins e prolactina<br>
+        <strong>🚫 Açúcar refinado, refrigerante, suco industrializado</strong> — HOMA borderline, triglicerídeos<br>
+        <strong>🚫 Embutidos e frios (salame, mortadela)</strong> — sódio alto, pior para rim e pressão<br>
+        <strong>🚫 Gordura trans (margarina, salgadinho, fast-food)</strong> — pior para LDL<br>
+        <strong>🚫 Proteína >155g/dia</strong> — sobrecarga renal<br>
+        <strong>🚫 Sal em excesso</strong> — sódio já em 146 (borderline)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TREINO ===== -->
+<div class="tab-panel" id="tab-treino">
+  <div class="section">
+    <div class="sec-title">Estrutura Semanal</div>
+
+    <div class="card card-blue">
+      <div class="card-body">
+        <strong>Segunda:</strong> Peito + Tríceps + Cardio leve<br>
+        <strong>Terça:</strong> Costas + Bíceps<br>
+        <strong>Quarta:</strong> Ombro + Trapézio + Cardio moderado<br>
+        <strong>Quinta:</strong> Pernas<br>
+        <strong>Sexta:</strong> Peito (volume) + Abdômen + Cardio<br>
+        <strong>Sábado:</strong> Cardio ativo ou mobilidade<br>
+        <strong>Domingo:</strong> Descanso completo
+      </div>
+    </div>
+
+    <div class="sec-title">Protocolo de Musculação</div>
+
+    <div class="exercise-day">
+      <div class="ex-day-header">
+        <div class="ex-day-title">Segunda — Peito + Tríceps</div>
+        <div class="ex-day-tag">Foco: volume peito</div>
+      </div>
+      <div class="ex-day-body">
+        <div class="ex-item"><div class="ex-num">1</div><div><div class="ex-name">Supino Reto com Barra</div><div class="ex-sets">4 × 8–10 reps | 90s descanso</div></div></div>
+        <div class="ex-item"><div class="ex-num">2</div><div><div class="ex-name">Supino Inclinado com Halteres</div><div class="ex-sets">4 × 10–12 | 75s</div></div></div>
+        <div class="ex-item"><div class="ex-num">3</div><div><div class="ex-name">Crucifixo na Polia (cabo baixo)</div><div class="ex-sets">3 × 12–15 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">4</div><div><div class="ex-name">Mergulho em Paralelas (peitoral)</div><div class="ex-sets">3 × 10–12 | 75s</div></div></div>
+        <div class="ex-item"><div class="ex-num">5</div><div><div class="ex-name">Tríceps Testa com Barra</div><div class="ex-sets">3 × 10–12 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">6</div><div><div class="ex-name">Tríceps Pulley com Corda</div><div class="ex-sets">3 × 15 | 60s</div></div></div>
+      </div>
+    </div>
+
+    <div class="exercise-day">
+      <div class="ex-day-header">
+        <div class="ex-day-title">Terça — Costas + Bíceps</div>
+        <div class="ex-day-tag">Foco: largura + espessura</div>
+      </div>
+      <div class="ex-day-body">
+        <div class="ex-item"><div class="ex-num">1</div><div><div class="ex-name">Barra Fixa (pegada aberta)</div><div class="ex-sets">4 × máx reps (ou assistida) | 90s</div></div></div>
+        <div class="ex-item"><div class="ex-num">2</div><div><div class="ex-name">Remada Curvada com Barra</div><div class="ex-sets">4 × 8–10 | 90s</div></div></div>
+        <div class="ex-item"><div class="ex-num">3</div><div><div class="ex-name">Remada Unilateral com Halter</div><div class="ex-sets">3 × 12 cada lado | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">4</div><div><div class="ex-name">Pulldown na Polia Alta</div><div class="ex-sets">3 × 12–15 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">5</div><div><div class="ex-name">Rosca Direta com Barra</div><div class="ex-sets">3 × 10–12 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">6</div><div><div class="ex-name">Rosca Martelo com Halteres</div><div class="ex-sets">3 × 12 | 60s</div></div></div>
+      </div>
+    </div>
+
+    <div class="exercise-day">
+      <div class="ex-day-header">
+        <div class="ex-day-title">Quarta — Ombro + Trapézio ⭐</div>
+        <div class="ex-day-tag">Prioridade: harmonização</div>
+      </div>
+      <div class="ex-day-body">
+        <div class="ex-item"><div class="ex-num">1</div><div><div class="ex-name">Desenvolvimento com Halteres</div><div class="ex-sets">4 × 10–12 | 90s</div></div></div>
+        <div class="ex-item"><div class="ex-num">2</div><div><div class="ex-name">Elevação Lateral com Halteres</div><div class="ex-sets">4 × 15–20 (peso leve, alta rep) | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">3</div><div><div class="ex-name">Elevação Frontal Alternada</div><div class="ex-sets">3 × 12 cada | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">4</div><div><div class="ex-name">Remada Alta com Barra (trapézio)</div><div class="ex-sets">4 × 12 | 75s</div></div></div>
+        <div class="ex-item"><div class="ex-num">5</div><div><div class="ex-name">Encolhimento com Halteres</div><div class="ex-sets">4 × 15 (pausa no topo) | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">6</div><div><div class="ex-name">Face Pull na Polia</div><div class="ex-sets">3 × 15 | 60s (saúde do ombro)</div></div></div>
+      </div>
+    </div>
+
+    <div class="exercise-day">
+      <div class="ex-day-header">
+        <div class="ex-day-title">Quinta — Pernas</div>
+        <div class="ex-day-tag">Volume + força</div>
+      </div>
+      <div class="ex-day-body">
+        <div class="ex-item"><div class="ex-num">1</div><div><div class="ex-name">Agachamento Livre</div><div class="ex-sets">4 × 8–10 | 120s</div></div></div>
+        <div class="ex-item"><div class="ex-num">2</div><div><div class="ex-name">Leg Press 45°</div><div class="ex-sets">4 × 12–15 | 90s</div></div></div>
+        <div class="ex-item"><div class="ex-num">3</div><div><div class="ex-name">Cadeira Extensora</div><div class="ex-sets">3 × 15 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">4</div><div><div class="ex-name">Stiff com Halteres</div><div class="ex-sets">4 × 12 | 75s</div></div></div>
+        <div class="ex-item"><div class="ex-num">5</div><div><div class="ex-name">Cadeira Flexora</div><div class="ex-sets">3 × 15 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">6</div><div><div class="ex-name">Panturrilha em Pé</div><div class="ex-sets">4 × 20 | 45s</div></div></div>
+      </div>
+    </div>
+
+    <div class="exercise-day">
+      <div class="ex-day-header">
+        <div class="ex-day-title">Sexta — Peito (volume) + Abdômen ⭐</div>
+        <div class="ex-day-tag">Prioridade: harmonização</div>
+      </div>
+      <div class="ex-day-body">
+        <div class="ex-item"><div class="ex-num">1</div><div><div class="ex-name">Supino Reto com Halteres</div><div class="ex-sets">4 × 12 | 75s</div></div></div>
+        <div class="ex-item"><div class="ex-num">2</div><div><div class="ex-name">Crossover na Polia</div><div class="ex-sets">4 × 15 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">3</div><div><div class="ex-name">Peck Deck (voador)</div><div class="ex-sets">3 × 15–20 | 60s</div></div></div>
+        <div class="ex-item"><div class="ex-num">4</div><div><div class="ex-name">Abdominal Crunch + Elevação de Pernas</div><div class="ex-sets">3 × 20 + 3 × 15 | 45s</div></div></div>
+        <div class="ex-item"><div class="ex-num">5</div><div><div class="ex-name">Prancha Isométrica</div><div class="ex-sets">3 × 45–60 segundos | 45s</div></div></div>
+        <div class="ex-item"><div class="ex-num">6</div><div><div class="ex-name">Rotação de Tronco com Cabo</div><div class="ex-sets">3 × 12 cada lado | 45s</div></div></div>
+      </div>
+    </div>
+
+    <div class="sec-title">Cardio — Obrigatório Para os Exames</div>
+
+    <div class="cardio-block">
+      <div class="cardio-title">📊 Por que cardio moderado (não HIIT)</div>
+      <div class="cardio-body">
+        Você toma Lisdexanfetamina (estimulante) + Minoxidil oral (cardiovascular). HIIT aumentaria muito o estresse cardíaco e o cortisol que já está alto-normal. Cardio moderado (zona 2, 60–70% FC máx) é o que mais eleva HDL e reduz triglicerídeos sem esses riscos.
+      </div>
+    </div>
+
+    <div class="cardio-block">
+      <div class="cardio-title">🚴 Protocolo: 3x por semana, 35–40 min</div>
+      <div class="cardio-body">
+        <strong>Opção A:</strong> Caminhada rápida (6–7 km/h) — mais fácil para o coração<br>
+        <strong>Opção B:</strong> Bike ergométrica — menor impacto, ótimo para rins<br>
+        <strong>Opção C:</strong> Natação — ideal (aeróbico + sem impacto)<br><br>
+        <strong>FC alvo:</strong> 118–133 bpm (220 - 32 = 188 × 0,63–0,70)<br>
+        <strong>Quando:</strong> Depois do treino de musculação ou manhã de sábado<br>
+        <strong>Hidratação:</strong> 500ml antes, 250ml a cada 15 min durante
+      </div>
+    </div>
+
+    <div class="sec-title">Regras do Treino Para Seu Caso</div>
+    <div class="card card-orange">
+      <div class="rule-item"><div class="rule-icon">⚠️</div><div class="rule-text"><strong>Sem creatina por enquanto</strong> — eleva creatinina sérica e atrapalha a leitura dos exames renais.</div></div>
+      <div class="rule-item"><div class="rule-icon">⚠️</div><div class="rule-text"><strong>Whey máx 1 scoop/dia</strong> — proteína renal tem limite de 155g total.</div></div>
+      <div class="rule-item"><div class="rule-icon">⚠️</div><div class="rule-text"><strong>Monitorar frequência cardíaca</strong> — Lisdex + Minoxidil = opostos no coração. Se sentir palpitação, para.</div></div>
+      <div class="rule-item"><div class="rule-icon">✅</div><div class="rule-text"><strong>Água 500ml antes de treinar</strong> — obrigatório com rim comprometido.</div></div>
+      <div class="rule-item"><div class="rule-icon">✅</div><div class="rule-text"><strong>Treinar com Lisdex ativo</strong> (efeito dura 10–12h) melhora foco e performance — aproveite.</div></div>
+      <div class="rule-item"><div class="rule-icon">✅</div><div class="rule-text"><strong>Descanso real no domingo</strong> — cortisol alto-normal precisa de recuperação adequada.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ROTINA DIÁRIA ===== -->
+<div class="tab-panel" id="tab-rotina">
+  <div class="section">
+    <div class="sec-title">Rotina Hora a Hora — Dia de Treino</div>
+    <div class="card">
+      <div class="sched-item">
+        <div class="sched-time">06h30</div>
+        <div class="sched-action">Acordar. Beber 500ml de água em jejum. <span class="tag tag-food">💧 Rim</span></div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">07h00</div>
+        <div class="sched-action"><strong>Lisdexanfetamina 30mg</strong> <span class="tag tag-med">💊 Med</span> — tomar o mais cedo possível para não atrapalhar o sono à noite.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">07h30</div>
+        <div class="sched-action"><strong>Café da manhã</strong> <span class="tag tag-food">🍳 Food</span> + <strong>Lavitan CDZE</strong> + <strong>Metilfolato</strong> <span class="tag tag-supl">💊 Supl</span></div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">10h30</div>
+        <div class="sched-action"><strong>Lanche manhã</strong> <span class="tag tag-food">🍎 Food</span> — iogurte + castanha + frutas. Beber mais 400ml de água.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">13h00</div>
+        <div class="sched-action"><strong>Almoço</strong> <span class="tag tag-food">🍽️ Food</span> + <strong>D3+K2 (10 gotas)</strong> + <strong>Ômega 3 (2 cápsulas)</strong> <span class="tag tag-supl">💊 Supl</span> — sempre com gordura.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">15h30</div>
+        <div class="sched-action"><strong>Pré-treino</strong> <span class="tag tag-food">⚡ Food</span> — batata-doce + proteína leve. 500ml de água.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">17h00</div>
+        <div class="sched-action"><strong>Treino de musculação</strong> <span class="tag tag-treino">🏋️ Treino</span> — 60–70 min. FC máx 133 bpm. Água durante.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">18h30</div>
+        <div class="sched-action"><strong>Cardio moderado</strong> (seg, qua, sex) <span class="tag tag-treino">🚴 Cardio</span> — 35 min, bike ou caminhada rápida.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">19h00</div>
+        <div class="sched-action"><strong>Pós-treino</strong> <span class="tag tag-food">🍳 Food</span> — proteína + carboidrato. Beber 500ml de água.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">20h30</div>
+        <div class="sched-action"><strong>Jantar</strong> <span class="tag tag-food">🌙 Food</span> + <strong>D3+K2 (5 gotas)</strong> + <strong>Ômega 3 (1 cápsula)</strong> <span class="tag tag-supl">💊 Supl</span></div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">21h30</div>
+        <div class="sched-action">Tela fora ou modo noturno. Luminosidade baixa. Cortisol precisa cair para dormir.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">22h30</div>
+        <div class="sched-action"><strong>Donaren (trazodona)</strong> <span class="tag tag-med">💊 Med</span> + preparar para dormir. Meta: 7–8h de sono.</div>
+      </div>
+      <div class="sched-item">
+        <div class="sched-time">23h00</div>
+        <div class="sched-action"><strong>Dormir</strong> <span class="tag tag-sleep">😴 Sono</span> — sono bom = cortisol ↓, SHBG ↓, insulina ↓, testosterona ↑.</div>
+      </div>
+    </div>
+
+    <div class="sec-title">Hidratação — Controle</div>
+    <div class="card card-teal">
+      <div class="card-body">
+        <strong>Meta: 3,5 litros por dia</strong> (obrigatório com eTFG 61)<br><br>
+        ☀️ Ao acordar: 500ml em jejum<br>
+        🍽️ Antes do almoço: 400ml<br>
+        ⚡ Antes do treino: 500ml<br>
+        🏋️ Durante o treino: 500ml<br>
+        🌙 Tarde/noite: 600ml<br>
+        Total: ~2,5–3,5L dependendo da transpiração
+      </div>
+    </div>
+
+    <div class="sec-title">Sono — Crítico Para Seus Exames</div>
+    <div class="card card-purple">
+      <div class="card-body">
+        <strong>Por que sono impacta seus exames:</strong><br>
+        • SHBG 50,4 (alto) → cai com sono adequado<br>
+        • Cortisol 17,1 (alto-normal) → 70% do cortisol é regulado no sono<br>
+        • HOMA-IR borderline → privação de sono piora resistência insulínica<br>
+        • Leucopenia → sistema imune se reconstrói no sono profundo<br><br>
+        <strong>Tomar Lisdex o mais cedo possível</strong> (07h) para que o efeito estimulante acabe antes das 21h. O Donaren à noite compensa, mas funciona melhor se o estimulante já passou.<br><br>
+        Meta: dormir antes das 23h30, acordar 7–8h depois.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SUPLEMENTOS ===== -->
+<div class="tab-panel" id="tab-supl">
+  <div class="section">
+    <div class="sec-title">Stack Completo — Você Já Tem</div>
+
+    <div class="card card-green">
+      <div class="card-body">
+        <div class="sched-item" style="padding:8px 0; border-bottom:1px solid #161622;">
+          <div class="sched-time" style="color:#44dd88;">Manhã</div>
+          <div class="sched-action"><strong>Lavitan CDZE — 1 comprimido</strong><br>C 500mg + D 1.000UI + Zinco 28mg + Selênio 75mcg + E 50mg</div>
+        </div>
+        <div class="sched-item" style="padding:8px 0; border-bottom:1px solid #161622;">
+          <div class="sched-time" style="color:#44dd88;">Manhã</div>
+          <div class="sched-action"><strong>Metilfolato L-5-MTHF — 400–800mcg</strong> <span class="tag b-orange" style="font-size:10px;padding:2px 6px;border-radius:8px;">COMPRAR</span><br>Farmácia de manipulação</div>
+        </div>
+        <div class="sched-item" style="padding:8px 0; border-bottom:1px solid #161622;">
+          <div class="sched-time" style="color:#44dd88;">Almoço</div>
+          <div class="sched-action"><strong>D3+K2 Drops — 10 gotas</strong><br>= 4.000 UI D3 + 90 mcg K2 — com gordura</div>
+        </div>
+        <div class="sched-item" style="padding:8px 0; border-bottom:1px solid #161622;">
+          <div class="sched-time" style="color:#44dd88;">Almoço</div>
+          <div class="sched-action"><strong>Ômega 3 PanVel — 2 cápsulas</strong><br>~600mg EPA+DHA</div>
+        </div>
+        <div class="sched-item" style="padding:8px 0; border-bottom:1px solid #161622;">
+          <div class="sched-time" style="color:#44dd88;">Jantar</div>
+          <div class="sched-action"><strong>D3+K2 Drops — 5 gotas</strong><br>= 2.000 UI D3 — com gordura</div>
+        </div>
+        <div class="sched-item" style="padding:8px 0;">
+          <div class="sched-time" style="color:#44dd88;">Jantar</div>
+          <div class="sched-action"><strong>Ômega 3 PanVel — 1 cápsula</strong><br>Total dia: 3 caps = ~900mg EPA+DHA</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">Total Diário de Suplementação</div>
+    <div class="macro-row">
+      <div class="macro-box"><div class="macro-val" style="font-size:16px;color:#4da6ff;">7.000</div><div class="macro-unit">UI D3</div></div>
+      <div class="macro-box"><div class="macro-val" style="font-size:16px;color:#44dd88;">900mg</div><div class="macro-unit">EPA+DHA</div></div>
+      <div class="macro-box"><div class="macro-val" style="font-size:16px;color:#ffaa44;">500mg</div><div class="macro-unit">Vit C</div></div>
+      <div class="macro-box"><div class="macro-val" style="font-size:16px;color:#cc88ff;">800mcg</div><div class="macro-unit">Metilfolato</div></div>
+    </div>
+
+    <div class="card card-orange">
+      <div class="card-h">⚠️ Biotina 5mg — Regra Crítica</div>
+      <div class="card-body">
+        Você toma biotina 5mg/dia manipulada. Essa dose interfere em VÁRIOS exames: prolactina, T4 livre, progesterona, vitaminas.<br>
+        <strong>Suspenda 72h antes de qualquer coleta de sangue.</strong><br>
+        Avise sempre ao laboratório: "estou em uso de biotina 5mg".
+      </div>
+    </div>
+
+    <div class="sec-title">Upgrade Futuro (ao acabar o atual)</div>
+    <div class="card card-blue">
+      <div class="card-body">
+        <strong>Ômega 3 concentrado:</strong> troque por um com EPA+DHA declarados — mínimo 1g EPA+DHA por cápsula. Meta: 2g EPA+DHA/dia para impacto real no LDL.<br><br>
+        <strong>Vitamina C 1g:</strong> o Lavitan tem 500mg. Para sua deficiência confirmada, vale adicionar mais 500mg separados à tarde para totalizar 1g/dia.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MEDICAMENTOS ===== -->
+<div class="tab-panel" id="tab-meds">
+  <div class="section">
+    <div class="sec-title">Contexto Clínico Completo</div>
+
+    <div class="card">
+      <div class="med-row">
+        <div class="med-icon">🧠</div>
+        <div>
+          <div class="med-name">Lisdexanfetamina 30mg (Vyvanse)</div>
+          <div class="med-dose">1 cápsula pela manhã — TDAH</div>
+          <div class="med-info">Estimulante do SNC. Melhora foco e performance no treino. Suprime apetite (útil para déficit calórico). Eleva cortisol e FC.</div>
+          <div class="med-alert">⚠️ Tomar às 07h — efeito dura 10–12h. Depois das 08h30 pode atrapalhar o sono. Monitorar FC no treino.</div>
+        </div>
+      </div>
+      <div class="med-row">
+        <div class="med-icon">😴</div>
+        <div>
+          <div class="med-name">Donaren — Trazodona</div>
+          <div class="med-dose">À noite — sono / ansiedade</div>
+          <div class="med-info">Antidepressivo serotonérgico usado como indutor do sono. Compensa a insônia da lisdex.</div>
+          <div class="med-alert">⚠️ Principal causa da prolactina 26,90. Serotonina eleva prolactina. Levar para o endocrinologista.</div>
+        </div>
+      </div>
+      <div class="med-row">
+        <div class="med-icon">❤️</div>
+        <div>
+          <div class="med-name">Rosuvastatina 10mg</div>
+          <div class="med-dose">Para LDL — Crestor genérico</div>
+          <div class="med-info">Estatina. LDL caiu de 254 → 214, mas ainda está em 144. Com 10mg não chegou na meta (&lt;100). Médico pode precisar aumentar para 20–40mg.</div>
+          <div class="med-alert">⚠️ Ômega 3 complementa o efeito. Dor muscular é efeito colateral — avise ao médico se aparecer.</div>
+        </div>
+      </div>
+      <div class="med-row">
+        <div class="med-icon">🫀</div>
+        <div>
+          <div class="med-name">Ezetimiba 10mg</div>
+          <div class="med-dose">Para LDL — bloqueia absorção intestinal</div>
+          <div class="med-info">Age sinergicamente com a rosuvastatina. LDL ainda em 144 na combinação — confirma que a dose da estatina pode precisar subir.</div>
+          <div class="med-alert">✅ Sem interações problemáticas com o seu protocolo.</div>
+        </div>
+      </div>
+      <div class="med-row">
+        <div class="med-icon">🫘</div>
+        <div>
+          <div class="med-name">Alopurinol 100mg</div>
+          <div class="med-dose">Para ácido úrico/gota</div>
+          <div class="med-info">Funcionando — ácido úrico foi de 7,5 para 6,0 (normalizado). Continue tomando.</div>
+          <div class="med-alert">⚠️ Alopurinol é eliminado pelos rins. Com eTFG 61, confirmar dose com o nefrologista.</div>
+        </div>
+      </div>
+      <div class="med-row">
+        <div class="med-icon">💇</div>
+        <div>
+          <div class="med-name">Minoxidil 2,5mg + Dutasterida 0,5mg</div>
+          <div class="med-dose">1 cápsula/dia — calvície</div>
+          <div class="med-info">Minoxidil oral: vasodilatador, pode causar retenção leve de líquido. Dutasterida bloqueia ~95% do DHT — seu DHT está em 364 (dentro do range, o que é incomum).</div>
+          <div class="med-alert">⚠️ Minoxidil oral + Lisdex = efeitos cardiovasculares opostos. Monitorar pressão e FC.</div>
+        </div>
+      </div>
+      <div class="med-row">
+        <div class="med-icon">✂️</div>
+        <div>
+          <div class="med-name">Biotina 5mg</div>
+          <div class="med-dose">1 cápsula/dia — cabelo/unhas</div>
+          <div class="med-info">Dose alta que interfere em exames laboratoriais (método de quimioluminescência).</div>
+          <div class="med-alert">🔴 Suspender 72h antes de qualquer exame de sangue. Sempre informar ao laboratório.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">O Que Levar Para Cada Médico</div>
+    <div class="card card-red">
+      <div class="card-h">🩺 Lista para apresentar ao médico</div>
+      <div class="card-body">
+        <strong>Medicamentos:</strong> Lisdex 30mg, Donaren (dose), Minoxidil 2,5mg + Dutasterida 0,5mg, Biotina 5mg, Rosuvastatina 10mg, Ezetimiba 10mg, Alopurinol 100mg<br><br>
+        <strong>Para Endocrinologista:</strong> Prolactina 26,90 + uso de Donaren = relação causal provável. Pedir avaliação.<br><br>
+        <strong>Para Nefrologista:</strong> Creatinina 1,40 → 1,54 (oscilação). Uso de Alopurinol. Confirmar dose segura.<br><br>
+        <strong>Para Cardiologista:</strong> LDL 144 em dupla terapia (rosuva + ezeti). Uso de Lisdex + Minoxidil oral. Solicitar aumento da rosuvastatina?<br><br>
+        <strong>Para Hematologista:</strong> Leucócitos 4.210 → 2.980 → 3.060. Tendência crônica. Medicações atuais como possível causa?
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var tab = this.getAttribute('data-tab');
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    this.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
