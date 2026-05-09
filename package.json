@@ -23,6 +23,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "oauth.js",
       "src/**/*",
       "assets/**/*",
       "package.json"
