@@ -2,7 +2,17 @@
 
 App desktop (Windows) que mostra a soma de seguidores de **2 contas YouTube + 2 Instagram + 2 TikTok** em tela cheia, atualizando em tempo real, e impede o computador de entrar em modo de espera/suspensão enquanto está aberto.
 
-> Os dados do YouTube vêm direto do **YouTube Studio Analytics** (subscribers exato em tempo real). Instagram e TikTok são lidos das páginas de perfil das contas em que você logar.
+> **Sem login.** O app não pede senha de nenhuma rede social. Os números são lidos das páginas/APIs públicas de cada plataforma.
+
+## Como cada número é coletado (sem login)
+
+| Plataforma | Como é lido | Latência |
+|---|---|---|
+| **YouTube** | API pública `mixerno.space` (a mesma usada pelos contadores ao vivo do livecounts.io). Conta exata. | ~5s |
+| **Instagram** | Tag `og:description` da página pública do perfil. Funciona para perfis **públicos**. | ~60s |
+| **TikTok** | JSON `__UNIVERSAL_DATA_FOR_REHYDRATION__` da página pública. Funciona para perfis **públicos**. | ~30s |
+
+Se um perfil do Instagram/TikTok for **privado**, a contagem dele não vem (os outros 5 continuam funcionando normalmente).
 
 ---
 
@@ -37,11 +47,11 @@ Depois do build, os instaladores estarão em **`dist/`**:
 ## Como usar
 
 1. Abra o app pela primeira vez → abre a tela de **Configuração**.
-2. Para cada um dos 6 slots:
-   - Cole o **Channel ID do YouTube** (`UCxtDy586BIg_d9NyFntEwmg`) ou link do canal.
-   - Para Instagram/TikTok: digite `@usuario` ou cole o link do perfil.
-   - Clique em **"Abrir login"** → abre uma janela do navegador da plataforma → faça login normalmente.
-3. Repita para as 6 contas (cada slot tem **sessão isolada**, então YT 1 e YT 2 podem ser contas diferentes).
+2. Para cada slot que quiser usar:
+   - **YouTube**: cole o **Channel ID** (`UCxtDy586BIg_d9NyFntEwmg`) ou link do canal.
+   - **Instagram/TikTok**: digite `@usuario` ou cole o link do perfil.
+   - Clique em **Testar** para validar antes de iniciar.
+3. Slots em branco são ignorados (só soma o que estiver preenchido).
 4. Clique em **"Iniciar contagem em tela cheia"**.
 
 A janela vai para fullscreen mostrando:

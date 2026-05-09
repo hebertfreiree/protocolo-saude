@@ -1,28 +1,31 @@
 === Como recombinar o app no Windows (Nitro 5) ===
 
-1. Baixe os 3 arquivos para a mesma pasta:
+1. Baixe os 3 arquivos para a mesma pasta (ex: Downloads):
    - SeguidoresTempoReal.zip.part00
    - SeguidoresTempoReal.zip.part01
    - SeguidoresTempoReal.zip.part02
 
-2. Abra o "Prompt de Comando" (cmd) nessa pasta:
-   - Shift + clique direito na pasta -> "Abrir janela do PowerShell aqui"
-   - Ou no cmd: cd "C:\caminho\da\pasta"
+2. Abra o Prompt de Comando NESSA pasta:
+   - Modo facil: na barra de endereco do Explorer, digite "cmd" e tecle Enter.
+   - Ou: Shift + clique direito em uma area vazia da pasta -> "Abrir no Terminal"
 
-3. Recombine com este comando (CMD):
+3. Cole o comando (selecione a linha toda e Enter):
 
    copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 SeguidoresTempoReal.zip
 
-   Ou no PowerShell:
+4. Vai aparecer um arquivo SeguidoresTempoReal.zip de 108 MB.
+   Clique direito -> "Extrair tudo".
 
-   cmd /c copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 SeguidoresTempoReal.zip
-
-4. Extraia o ZIP gerado (Botão direito -> Extrair tudo).
-
-5. Entre na pasta "Seguidores Tempo Real" e execute:
+5. Entre na pasta extraida "Seguidores Tempo Real" e execute:
    "Seguidores Tempo Real.exe"
 
-   (Como não está assinado, o Windows SmartScreen pode pedir confirmação:
-    clique em "Mais informações" -> "Executar assim mesmo")
+   (Como nao esta assinado, o Windows SmartScreen pode pedir confirmacao:
+    clique em "Mais informacoes" -> "Executar assim mesmo")
 
-Pronto. App em tela cheia somando seguidores das suas redes.
+>>> ATENCAO: NAO precisa logar em rede social nenhuma. <<<
+   Apenas cole no campo:
+   - YouTube  : Channel ID (UC...) ou link do canal
+   - Instagram: @usuario (perfil precisa ser publico)
+   - TikTok   : @usuario (perfil precisa ser publico)
+
+   Use o botao "Testar" de cada slot pra validar.

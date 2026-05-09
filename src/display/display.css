@@ -1,143 +1,254 @@
+/* ============================================================================
+   Seguidores em Tempo Real — display
+   Layout: simétrico vertical (4 zonas centradas), 1 fonte (Segoe UI Variable)
+   ============================================================================ */
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: #06070b;
+  color: #ffffff;
+  font-family: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  font-feature-settings: 'tnum', 'lnum';
+  font-variant-numeric: tabular-nums lining-nums;
+  -webkit-font-smoothing: antialiased;
   cursor: none;
 }
 body:hover { cursor: default; }
 
-.root {
-  position: absolute;
-  inset: 0;
+/* gradiente ambiente sutil */
+body::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(1200px 800px at 50% 35%, rgba(50, 100, 220, 0.08), transparent 70%),
+    radial-gradient(900px 600px at 50% 95%, rgba(80, 60, 200, 0.06), transparent 70%);
+  pointer-events: none;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;  /* brand / hero / delta / grid / bar */
+  grid-template-columns: 1fr;
+  align-items: center;
+  justify-items: center;
+  padding: 4vh 4vw 0;
+}
+
+/* ============================================================================
+   1. Brand line (topo, centralizada)
+   ============================================================================ */
+.brand {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4vh 4vw;
-  background: radial-gradient(ellipse at center, #0a0a18 0%, #000 70%);
-}
-
-.title {
-  font-size: 4.5vw;
-  letter-spacing: 0.5vw;
-  font-weight: 800;
-  color: #6699cc;
+  gap: 1.4vw;
+  font-size: 1.5vw;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  color: #5a708e;
   text-transform: uppercase;
-  text-shadow: 0 0 30px rgba(80, 140, 220, 0.4);
-  margin-bottom: 2vh;
-  text-align: center;
+  padding-top: 1vh;
+}
+.brand-dot {
+  width: 0.6vw; height: 0.6vw;
+  border-radius: 50%;
+  background: #2266dd;
+  box-shadow: 0 0 1.5vw rgba(34, 102, 221, 0.7);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+.brand-dot.error { background: #dd4455; box-shadow: 0 0 1.5vw rgba(221, 68, 85, 0.7); }
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
 }
 
+/* ============================================================================
+   2. Hero — número grande centralizado
+   ============================================================================ */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
 .counter {
-  font-size: 26vw;
-  font-weight: 900;
-  line-height: 0.95;
-  letter-spacing: -0.02em;
-  background: linear-gradient(180deg, #ffffff 0%, #88bbff 60%, #4477cc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 0 80px rgba(80, 140, 220, 0.25);
-  font-variant-numeric: tabular-nums;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.counter.bump { transform: scale(1.04); }
-
-.delta {
-  font-size: 3vw;
+  font-size: 22vw;
+  line-height: 0.92;
   font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  text-align: center;
+  text-shadow:
+    0 0 60px rgba(120, 170, 255, 0.18),
+    0 0 200px rgba(60, 100, 200, 0.12);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-variant-numeric: tabular-nums;
+}
+.counter.bump { transform: scale(1.025); }
+
+/* ============================================================================
+   3. Delta — variação (centralizada, abaixo do número)
+   ============================================================================ */
+.delta-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
   margin-top: 1vh;
+  margin-bottom: 1vh;
+}
+.delta {
+  font-size: 1.6vw;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: #66dd99;
   min-height: 1.5em;
-  letter-spacing: 0.1em;
 }
 .delta.down { color: #dd6677; }
-.delta.zero { color: #555; }
+.delta.zero { color: #4a5870; }
 
-.breakdown {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2vw;
-  margin-top: 4vh;
-  max-width: 95vw;
+/* ============================================================================
+   4. Grid de 6 cards (3x2 perfeitamente simétrico)
+   ============================================================================ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 1.2vw;
+  width: 100%;
+  max-width: 78vw;
+  margin: 2vh auto 3vh;
 }
 .bd-item {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 1vw;
-  padding: 1vh 1.5vw;
-  display: flex;
+  display: grid;
+  grid-template-rows: auto 1fr;
   align-items: center;
-  gap: 1vw;
-  min-width: 16vw;
+  justify-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.8vw;
+  padding: 1.4vh 1.5vw;
+  min-height: 11vh;
+  position: relative;
+  overflow: hidden;
 }
-.bd-platform-icon {
-  width: 2.5vw;
-  height: 2.5vw;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4vw;
-  font-weight: 800;
-  color: #fff;
-}
-.bd-platform-icon.yt { background: #ff0000; }
-.bd-platform-icon.ig { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-.bd-platform-icon.tt { background: #000; border: 1px solid #00f2ea; color: #00f2ea; }
-.bd-info { display: flex; flex-direction: column; }
-.bd-label { font-size: 0.95vw; color: #99aabb; text-transform: uppercase; letter-spacing: 0.1vw; }
-.bd-count { font-size: 2vw; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
-.bd-count.error { color: #dd6677; font-size: 1.2vw; font-weight: 600; }
-
-.footer {
+.bd-item::before {
+  content: '';
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5vh 2vw;
-  font-size: 1.1vw;
-  color: #557799;
-  opacity: 0;
-  transition: opacity 0.3s;
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent, #2266dd);
+  opacity: 0.7;
 }
-.footer:hover, body:hover .footer { opacity: 1; }
+.bd-item.yt { --accent: #ff3344; }
+.bd-item.ig { --accent: #d6266a; }
+.bd-item.tt { --accent: #25f4ee; }
 
-.footer-left, .footer-right { display: flex; align-items: center; gap: 1vw; }
-
-.dot {
-  width: 0.8vw;
-  height: 0.8vw;
+.bd-platform {
+  font-size: 0.85vw;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: #6a7a90;
+  text-transform: uppercase;
+  margin-bottom: 0.6vh;
+}
+.bd-platform .swatch {
+  display: inline-block;
+  width: 0.55vw; height: 0.55vw;
   border-radius: 50%;
-  background: #66dd99;
-  box-shadow: 0 0 0.8vw #66dd99;
-  animation: pulse 2s infinite;
+  background: var(--accent);
+  margin-right: 0.5vw;
+  vertical-align: middle;
 }
-.dot.error { background: #dd6677; box-shadow: 0 0 0.8vw #dd6677; }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.bd-count {
+  font-size: 2.4vw;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+.bd-count.error {
+  font-size: 1.05vw;
+  font-weight: 500;
+  color: #dd6677;
+  letter-spacing: 0;
+}
+.bd-label {
+  font-size: 0.85vw;
+  font-weight: 500;
+  color: #5a708e;
+  margin-top: 0.5vh;
 }
 
-.footer button {
+.bd-empty {
+  background: rgba(255, 255, 255, 0.012);
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.04);
+}
+.bd-empty::before { display: none; }
+.bd-empty .bd-platform,
+.bd-empty .bd-count,
+.bd-empty .bd-label { color: #2e3848; }
+
+/* ============================================================================
+   5. Bottom bar — 3 colunas iguais (esq/centro/dir)
+   ============================================================================ */
+.bar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  padding: 2vh 1vw 2vh;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  opacity: 0.0;
+  transition: opacity 0.25s;
+}
+.stage:hover .bar { opacity: 1; }
+
+.bar-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3vh;
+}
+.bar-left { align-items: flex-start; }
+.bar-center { align-items: center; }
+.bar-right { flex-direction: row; justify-content: flex-end; gap: 0.8vw; }
+
+.bar-label {
+  font-size: 0.75vw;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  color: #3a4860;
+  text-transform: uppercase;
+}
+.bar-value {
+  font-size: 1.05vw;
+  font-weight: 500;
+  color: #8088a0;
+}
+
+.bar button {
   font-family: inherit;
   background: transparent;
-  border: 1px solid #334455;
-  color: #99aabb;
-  padding: 0.5vh 1vw;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #8088a0;
+  padding: 0.7vh 1.2vw;
   border-radius: 0.4vw;
   cursor: pointer;
-  font-size: 1vw;
+  font-size: 0.9vw;
   font-weight: 600;
+  letter-spacing: 0.15em;
+  transition: all 0.15s;
 }
-.footer button:hover { border-color: #4499dd; color: #4499dd; }
+.bar button:hover {
+  border-color: #2266dd;
+  color: #88aaff;
+}

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, ipcMain, powerSaveBlocker, session, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, powerSaveBlocker, net, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -6,525 +6,30 @@ const CONFIG_FILE = path.join(app.getPath('userData'), 'accounts.json');
 const SLOTS = ['yt1', 'yt2', 'ig1', 'ig2', 'tt1', 'tt2'];
 const IS_DEV = process.argv.includes('--dev') || !app.isPackaged;
 
-// === Security: domínios permitidos por plataforma ===
-// Qualquer navegação ou abertura de janela fora dessas listas é bloqueada.
-const ALLOWED_DOMAINS = {
-  youtube: [
-    'studio.youtube.com', 'www.youtube.com', 'youtube.com', 'm.youtube.com',
-    'accounts.google.com', 'accounts.youtube.com', 'myaccount.google.com',
-    'ssl.gstatic.com', 'www.gstatic.com', 'fonts.gstatic.com', 'fonts.googleapis.com',
-    'apis.google.com', 'play.google.com', 'i.ytimg.com', 'yt3.ggpht.com',
-    'lh3.googleusercontent.com', 'content-autofill.googleapis.com',
-    'clients4.google.com', 'clients2.google.com'
-  ],
-  instagram: [
-    'www.instagram.com', 'instagram.com', 'i.instagram.com',
-    'static.cdninstagram.com', 'scontent.cdninstagram.com',
-    'graph.instagram.com', 'graph.facebook.com',
-    'www.facebook.com', 'facebook.com', 'm.facebook.com', 'b.i.instagram.com'
-  ],
-  tiktok: [
-    'www.tiktok.com', 'tiktok.com', 'm.tiktok.com',
-    'lf16-tiktok-web.ttwstatic.com', 'lf16-tiktok-common.ttwstatic.com',
-    'sf16-website-login.neutral.ttwstatic.com', 'webcast.tiktok.com',
-    'www.tiktokcdn.com', 'p16-sign.tiktokcdn-us.com', 'p16-sign-va.tiktokcdn.com',
-    'mssdk.tiktokv.com', 'mssdk-va.tiktokv.com', 'mssdk-sg.tiktokv.com',
-    'mcs.tiktokw.us', 'mon16-normal-useast5.tiktokv.us',
-    'login.tiktok.com', 'mssdk.tiktok.com'
-  ]
-};
-
-function urlMatchesAllowed(urlStr, platform) {
-  try {
-    const u = new URL(urlStr);
-    if (u.protocol !== 'https:' && u.protocol !== 'about:' && u.protocol !== 'data:') {
-      return false;
-    }
-    const list = ALLOWED_DOMAINS[platform] || [];
-    return list.some(d => u.hostname === d || u.hostname.endsWith('.' + d));
-  } catch { return false; }
-}
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36';
 
 let mainWindow = null;
 let setupWindow = null;
 let powerSaveId = null;
-const scraperViews = {};
+let pollTimer = null;
 const lastCounts = {};
 const lastUpdated = {};
+const lastError = {};
+const lastFetched = {};
 
+// =============================================================================
+// Config
+// =============================================================================
 function loadConfig() {
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-    }
-  } catch (e) {
-    console.error('Erro ao ler config:', e);
-  }
+    if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+  } catch (e) { console.error('Config:', e); }
   return {};
 }
-
 function saveConfig(cfg) {
   fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
 }
-
-function getPartition(slotId) {
-  return `persist:${slotId}`;
-}
-
-function buildScraperUrl(platform, identifier) {
-  if (!identifier) return null;
-  const id = identifier.trim();
-  if (platform === 'youtube') {
-    let channelId = id;
-    const m = id.match(/channel\/(UC[A-Za-z0-9_-]{20,})/);
-    if (m) channelId = m[1];
-    if (!channelId.startsWith('UC')) return null;
-    return `https://studio.youtube.com/channel/${channelId}/analytics/tab-overview/period-default/explore?entity_type=CHANNEL&entity_id=${channelId}&time_period=4_weeks&explore_type=SUBSCRIBERS`;
-  }
-  if (platform === 'instagram') {
-    let username = id.replace(/^@/, '');
-    const m = id.match(/instagram\.com\/([^\/?#]+)/i);
-    if (m) username = m[1];
-    return `https://www.instagram.com/${username}/`;
-  }
-  if (platform === 'tiktok') {
-    let username = id.replace(/^@/, '');
-    const m = id.match(/tiktok\.com\/@([^\/?#]+)/i);
-    if (m) username = m[1];
-    return `https://www.tiktok.com/@${username}`;
-  }
-  return null;
-}
-
-function startPowerSaveBlocker() {
-  if (powerSaveId === null || !powerSaveBlocker.isStarted(powerSaveId)) {
-    powerSaveId = powerSaveBlocker.start('prevent-display-sleep');
-    console.log('PowerSaveBlocker iniciado:', powerSaveId);
-  }
-}
-
-function stopPowerSaveBlocker() {
-  if (powerSaveId !== null && powerSaveBlocker.isStarted(powerSaveId)) {
-    powerSaveBlocker.stop(powerSaveId);
-    powerSaveId = null;
-  }
-}
-
-function hardenLocalWindow(win) {
-  // Bloqueia novas janelas e qualquer navegação para fora dos arquivos locais.
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  win.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith('file://')) e.preventDefault();
-  });
-  win.webContents.on('will-attach-webview', (e) => e.preventDefault());
-  if (!IS_DEV) {
-    win.webContents.on('before-input-event', (e, input) => {
-      // Bloqueia DevTools em produção
-      if ((input.control || input.meta) && input.shift && (input.key === 'I' || input.key === 'i')) {
-        e.preventDefault();
-      }
-      if (input.key === 'F12') e.preventDefault();
-    });
-  }
-}
-
-function createSetupWindow() {
-  if (setupWindow) {
-    setupWindow.focus();
-    return;
-  }
-  setupWindow = new BrowserWindow({
-    width: 1100,
-    height: 760,
-    title: 'Configurar contas — Seguidores Tempo Real',
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
-  });
-  setupWindow.loadFile(path.join(__dirname, 'src', 'setup', 'setup.html'));
-  hardenLocalWindow(setupWindow);
-  setupWindow.on('closed', () => { setupWindow = null; });
-}
-
-function createMainWindow() {
-  mainWindow = new BrowserWindow({
-    fullscreen: true,
-    autoHideMenuBar: true,
-    title: 'Seguidores em Tempo Real',
-    backgroundColor: '#000000',
-    kiosk: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
-  });
-  Menu.setApplicationMenu(null);
-  mainWindow.loadFile(path.join(__dirname, 'src', 'display', 'display.html'));
-  hardenLocalWindow(mainWindow);
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    stopAllScrapers();
-    stopPowerSaveBlocker();
-  });
-}
-
-function hardenScraperSession(ses, platform) {
-  // Bloqueia permissões sensíveis (câmera, mic, geolocalização, notificações, etc.)
-  ses.setPermissionRequestHandler((_wc, _perm, callback) => callback(false));
-  ses.setPermissionCheckHandler(() => false);
-  ses.setDevicePermissionHandler(() => false);
-  ses.setDisplayMediaRequestHandler((_req, callback) => callback({}));
-  // Não baixar nada do navegador embutido
-  ses.on('will-download', (e) => e.preventDefault());
-}
-
-function createScraperView(slotId, platform, url) {
-  const partition = getPartition(slotId);
-  const ses = session.fromPartition(partition);
-  ses.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
-  hardenScraperSession(ses, platform);
-
-  const view = new BrowserView({
-    webPreferences: {
-      partition,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false,
-      autoplayPolicy: 'document-user-activation-required',
-      offscreen: false
-    }
-  });
-
-  view.setBackgroundColor('#000000');
-  view.webContents.setAudioMuted(true);
-
-  view.webContents.setWindowOpenHandler(({ url: newUrl }) => {
-    if (urlMatchesAllowed(newUrl, platform)) return { action: 'allow' };
-    return { action: 'deny' };
-  });
-  view.webContents.on('will-navigate', (e, navUrl) => {
-    if (!urlMatchesAllowed(navUrl, platform)) {
-      console.warn(`[${slotId}] navegação bloqueada para ${navUrl}`);
-      e.preventDefault();
-    }
-  });
-  view.webContents.on('will-redirect', (e, navUrl) => {
-    if (!urlMatchesAllowed(navUrl, platform)) {
-      console.warn(`[${slotId}] redirect bloqueado para ${navUrl}`);
-      e.preventDefault();
-    }
-  });
-
-  view.webContents.loadURL(url).catch(err => console.error(`Erro carregando ${slotId}:`, err));
-
-  scraperViews[slotId] = { view, platform, url, lastReload: Date.now() };
-  return view;
-}
-
-function stopAllScrapers() {
-  for (const slotId of Object.keys(scraperViews)) {
-    try {
-      const entry = scraperViews[slotId];
-      if (entry && entry.view && !entry.view.webContents.isDestroyed()) {
-        entry.view.webContents.close();
-      }
-    } catch (e) { /* ignore */ }
-    delete scraperViews[slotId];
-  }
-}
-
-const SCRAPE_SCRIPTS = {
-  youtube: `
-    (() => {
-      function parseNum(s) {
-        if (!s) return null;
-        const cleaned = s.toString().replace(/[^\\d.,]/g, '').replace(/\\./g, '').replace(/,/g, '');
-        const n = parseInt(cleaned, 10);
-        return Number.isFinite(n) ? n : null;
-      }
-      function findInDeep(root, predicate) {
-        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-        let node;
-        const results = [];
-        while ((node = walker.nextNode())) {
-          if (predicate(node)) results.push(node);
-          if (node.shadowRoot) {
-            results.push(...findInDeep(node.shadowRoot, predicate));
-          }
-        }
-        return results;
-      }
-      const candidates = [];
-      const selectors = [
-        '#total-metric-value',
-        '.metric-value-figure',
-        'ytcp-explore-metric-summary .metric-value',
-        '.ytcp-analytics-deep-dive-card .metric-value',
-        '[class*="metric-total"]',
-        '[class*="explore-metric"]'
-      ];
-      for (const sel of selectors) {
-        document.querySelectorAll(sel).forEach(el => {
-          const n = parseNum(el.textContent);
-          if (n !== null && n >= 0) candidates.push({ value: n, source: sel });
-        });
-      }
-      const deepNodes = findInDeep(document, (el) => {
-        const t = (el.textContent || '').trim();
-        return el.children.length === 0 && /^[\\d.,]{1,20}$/.test(t);
-      });
-      for (const el of deepNodes) {
-        const n = parseNum(el.textContent);
-        if (n !== null && n > 100) candidates.push({ value: n, source: 'deep-text' });
-      }
-      const text = (document.body && document.body.innerText) || '';
-      const m = text.match(/([\\d.,]+)\\s*(?:inscritos|subscribers)/i);
-      if (m) {
-        const n = parseNum(m[1]);
-        if (n !== null) candidates.push({ value: n, source: 'regex' });
-      }
-      if (candidates.length === 0) return { ok: false, error: 'no_candidate', url: location.href };
-      candidates.sort((a, b) => b.value - a.value);
-      return { ok: true, count: candidates[0].value, source: candidates[0].source, all: candidates.slice(0, 5) };
-    })();
-  `,
-  instagram: `
-    (() => {
-      function parseNum(s) {
-        if (!s) return null;
-        const cleaned = s.toString().replace(/[^\\d.,KMBkmb]/g, '').trim();
-        const m = cleaned.match(/^([\\d.,]+)([KMB])?$/i);
-        if (!m) {
-          const justDigits = cleaned.replace(/\\./g, '').replace(/,/g, '');
-          const n = parseInt(justDigits, 10);
-          return Number.isFinite(n) ? n : null;
-        }
-        let n = parseFloat(m[1].replace(/,/g, '.'));
-        const suf = (m[2] || '').toUpperCase();
-        if (suf === 'K') n *= 1000;
-        else if (suf === 'M') n *= 1000000;
-        else if (suf === 'B') n *= 1000000000;
-        return Math.round(n);
-      }
-      const candidates = [];
-      const titleEl = document.querySelector('meta[property="og:description"]');
-      if (titleEl && titleEl.content) {
-        const m = titleEl.content.match(/([\\d.,KMB]+)\\s*(?:Followers|Seguidores|seguidores)/i);
-        if (m) {
-          const n = parseNum(m[1]);
-          if (n !== null) candidates.push({ value: n, source: 'og:description' });
-        }
-      }
-      const links = document.querySelectorAll('a[href$="/followers/"], a[href*="/followers/"]');
-      links.forEach(a => {
-        const titleAttr = a.querySelector('span[title]');
-        if (titleAttr && titleAttr.title) {
-          const n = parseNum(titleAttr.title);
-          if (n !== null) candidates.push({ value: n, source: 'span-title' });
-        }
-        const span = a.querySelector('span');
-        if (span && span.textContent) {
-          const n = parseNum(span.textContent);
-          if (n !== null) candidates.push({ value: n, source: 'span-text' });
-        }
-      });
-      const ulItems = document.querySelectorAll('header ul li, header section ul li');
-      ulItems.forEach(li => {
-        const t = li.textContent || '';
-        const m = t.match(/([\\d.,KMB]+)\\s*(?:followers|seguidores)/i);
-        if (m) {
-          const n = parseNum(m[1]);
-          if (n !== null) candidates.push({ value: n, source: 'header-li' });
-        }
-      });
-      if (candidates.length === 0) return { ok: false, error: 'no_candidate', url: location.href };
-      candidates.sort((a, b) => b.value - a.value);
-      return { ok: true, count: candidates[0].value, source: candidates[0].source, all: candidates.slice(0, 5) };
-    })();
-  `,
-  tiktok: `
-    (() => {
-      function parseNum(s) {
-        if (!s) return null;
-        const cleaned = s.toString().replace(/[^\\d.,KMBkmb]/g, '').trim();
-        const m = cleaned.match(/^([\\d.,]+)([KMB])?$/i);
-        if (!m) {
-          const justDigits = cleaned.replace(/\\./g, '').replace(/,/g, '');
-          const n = parseInt(justDigits, 10);
-          return Number.isFinite(n) ? n : null;
-        }
-        let n = parseFloat(m[1].replace(/,/g, '.'));
-        const suf = (m[2] || '').toUpperCase();
-        if (suf === 'K') n *= 1000;
-        else if (suf === 'M') n *= 1000000;
-        else if (suf === 'B') n *= 1000000000;
-        return Math.round(n);
-      }
-      const candidates = [];
-      const e2e = document.querySelector('[data-e2e="followers-count"]');
-      if (e2e && e2e.textContent) {
-        const titleAttr = e2e.getAttribute('title');
-        if (titleAttr) {
-          const n = parseNum(titleAttr);
-          if (n !== null) candidates.push({ value: n, source: 'e2e-title' });
-        }
-        const n2 = parseNum(e2e.textContent);
-        if (n2 !== null) candidates.push({ value: n2, source: 'e2e-text' });
-      }
-      const strong = document.querySelector('strong[title][data-e2e="followers-count"]');
-      if (strong && strong.title) {
-        const n = parseNum(strong.title);
-        if (n !== null) candidates.push({ value: n, source: 'strong-title' });
-      }
-      const text = (document.body && document.body.innerText) || '';
-      const m = text.match(/([\\d.,KMB]+)\\s*(?:Followers|Seguidores|seguidores)/i);
-      if (m) {
-        const n = parseNum(m[1]);
-        if (n !== null) candidates.push({ value: n, source: 'regex' });
-      }
-      if (candidates.length === 0) return { ok: false, error: 'no_candidate', url: location.href };
-      candidates.sort((a, b) => b.value - a.value);
-      return { ok: true, count: candidates[0].value, source: candidates[0].source, all: candidates.slice(0, 5) };
-    })();
-  `
-};
-
-const RELOAD_INTERVAL_MS = {
-  youtube: 30 * 60 * 1000,
-  instagram: 60 * 1000,
-  tiktok: 60 * 1000
-};
-
-async function scrapeOne(slotId) {
-  const entry = scraperViews[slotId];
-  if (!entry) return { ok: false, error: 'no_view' };
-  const { view, platform } = entry;
-  if (view.webContents.isDestroyed()) return { ok: false, error: 'destroyed' };
-  if (view.webContents.isLoading()) return { ok: false, error: 'loading' };
-
-  try {
-    const result = await view.webContents.executeJavaScript(SCRAPE_SCRIPTS[platform], true);
-    if (result && result.ok) {
-      lastCounts[slotId] = result.count;
-      lastUpdated[slotId] = Date.now();
-    }
-    const interval = RELOAD_INTERVAL_MS[platform] || 60000;
-    if (Date.now() - entry.lastReload > interval) {
-      entry.lastReload = Date.now();
-      view.webContents.reload();
-    }
-    return result;
-  } catch (e) {
-    return { ok: false, error: String(e) };
-  }
-}
-
-function startScraping(config) {
-  stopAllScrapers();
-  for (const slotId of SLOTS) {
-    const slot = config[slotId];
-    if (!slot || !slot.platform || !slot.identifier) continue;
-    const url = buildScraperUrl(slot.platform, slot.identifier);
-    if (!url) continue;
-    createScraperView(slotId, slot.platform, url);
-  }
-  setInterval(async () => {
-    const results = {};
-    for (const slotId of Object.keys(scraperViews)) {
-      results[slotId] = await scrapeOne(slotId);
-    }
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('counts-update', {
-        counts: lastCounts,
-        updated: lastUpdated,
-        results,
-        config
-      });
-    }
-  }, 5000);
-}
-
-ipcMain.handle('config:get', () => loadConfig());
-
-ipcMain.handle('config:save', (_evt, cfg) => {
-  saveConfig(sanitizeConfig(cfg));
-  return true;
-});
-
-ipcMain.handle('account:login', async (_evt, slotIdRaw, platformRaw) => {
-  // Validação rigorosa dos parâmetros vindos do renderer
-  if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
-  const platform = String(platformRaw || '').toLowerCase();
-  if (!['youtube', 'instagram', 'tiktok'].includes(platform)) return { ok: false, error: 'invalid_platform' };
-  const slotId = slotIdRaw;
-
-  const partition = getPartition(slotId);
-  const ses = session.fromPartition(partition);
-  ses.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
-  hardenScraperSession(ses, platform);
-
-  const loginUrl = {
-    youtube: 'https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fstudio.youtube.com%2F',
-    instagram: 'https://www.instagram.com/accounts/login/',
-    tiktok: 'https://www.tiktok.com/login'
-  }[platform];
-
-  const win = new BrowserWindow({
-    width: 1000,
-    height: 800,
-    title: `Login ${platform} (slot ${slotId}) — feche esta janela ao terminar`,
-    autoHideMenuBar: true,
-    webPreferences: {
-      partition,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
-  });
-  win.webContents.setWindowOpenHandler(({ url: newUrl }) => (
-    urlMatchesAllowed(newUrl, platform) ? { action: 'allow' } : { action: 'deny' }
-  ));
-  win.webContents.on('will-navigate', (e, navUrl) => {
-    if (!urlMatchesAllowed(navUrl, platform)) e.preventDefault();
-  });
-  win.webContents.on('will-redirect', (e, navUrl) => {
-    if (!urlMatchesAllowed(navUrl, platform)) e.preventDefault();
-  });
-  await win.loadURL(loginUrl);
-  return new Promise((resolve) => {
-    win.on('closed', () => resolve({ ok: true }));
-  });
-});
-
-ipcMain.handle('account:logout', async (_evt, slotIdRaw) => {
-  if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
-  const partition = getPartition(slotIdRaw);
-  const ses = session.fromPartition(partition);
-  await ses.clearStorageData();
-  await ses.clearAuthCache();
-  await ses.clearCache();
-  return { ok: true };
-});
-
 function sanitizeConfig(raw) {
   if (!raw || typeof raw !== 'object') return {};
   const out = {};
@@ -542,97 +47,406 @@ function sanitizeConfig(raw) {
   return out;
 }
 
-ipcMain.handle('app:start-display', async (_evt, rawConfig) => {
-  const config = sanitizeConfig(rawConfig);
-  saveConfig(config);
-  if (setupWindow) setupWindow.close();
-  createMainWindow();
-  startPowerSaveBlocker();
-  mainWindow.webContents.once('did-finish-load', () => {
-    startScraping(config);
+// =============================================================================
+// Identifier parsing
+// =============================================================================
+function parseChannelId(id) {
+  if (!id) return null;
+  const s = id.trim();
+  const m = s.match(/(UC[A-Za-z0-9_-]{20,})/);
+  if (m) return m[1];
+  if (s.startsWith('UC')) return s;
+  return null;
+}
+function parseUsername(id) {
+  if (!id) return null;
+  let s = id.trim().replace(/^@/, '');
+  const ig = s.match(/instagram\.com\/([^\/?#]+)/i);
+  if (ig) return ig[1].replace(/^@/, '');
+  const tt = s.match(/tiktok\.com\/@([^\/?#]+)/i);
+  if (tt) return tt[1];
+  return s;
+}
+
+// =============================================================================
+// HTTP fetch helper (uses Electron's Chromium net stack)
+// =============================================================================
+async function httpGet(url, headers = {}) {
+  const res = await net.fetch(url, {
+    method: 'GET',
+    headers: {
+      'User-Agent': UA,
+      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+      'Accept': 'text/html,application/json,*/*',
+      ...headers
+    },
+    redirect: 'follow'
   });
-  return { ok: true };
-});
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res;
+}
 
-ipcMain.handle('app:open-setup', () => {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.close();
-  }
-  stopAllScrapers();
-  stopPowerSaveBlocker();
-  createSetupWindow();
-  return { ok: true };
-});
+// =============================================================================
+// YouTube — uses mixerno.space (the API behind livecounts.io)
+// =============================================================================
+async function fetchYouTube(channelIdRaw) {
+  const channelId = parseChannelId(channelIdRaw);
+  if (!channelId) throw new Error('Channel ID inválido (precisa começar com UC...)');
 
-ipcMain.handle('app:exit', () => {
-  app.quit();
-});
-
-ipcMain.handle('display:toggle-fullscreen', () => {
-  if (mainWindow) mainWindow.setFullScreen(!mainWindow.isFullScreen());
-});
-
-ipcMain.handle('display:get-debug', () => {
-  const out = {};
-  for (const slotId of Object.keys(scraperViews)) {
-    const entry = scraperViews[slotId];
-    out[slotId] = {
-      platform: entry.platform,
-      url: entry.url,
-      lastReload: entry.lastReload,
-      currentUrl: entry.view.webContents.getURL(),
-      isLoading: entry.view.webContents.isLoading(),
-      lastCount: lastCounts[slotId] || null,
-      lastUpdated: lastUpdated[slotId] || null
-    };
-  }
-  return out;
-});
-
-function applyDefaultSessionHardening() {
-  // Sessão padrão (telas locais setup/display): CSP estrita e nada de permissões.
-  const def = session.defaultSession;
-  def.setPermissionRequestHandler((_wc, _perm, callback) => callback(false));
-  def.setPermissionCheckHandler(() => false);
-  def.setDevicePermissionHandler(() => false);
-
-  def.webRequest.onHeadersReceived((details, callback) => {
-    const url = details.url || '';
-    if (url.startsWith('file://')) {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          'Content-Security-Policy': [
-            "default-src 'self'; " +
-            "script-src 'self'; " +
-            "style-src 'self' 'unsafe-inline'; " +
-            "img-src 'self' data:; " +
-            "font-src 'self' data:; " +
-            "connect-src 'none'; " +
-            "object-src 'none'; " +
-            "base-uri 'self'; " +
-            "form-action 'none'; " +
-            "frame-ancestors 'none';"
-          ]
-        }
-      });
-    } else {
-      callback({ responseHeaders: details.responseHeaders });
+  // Primary: mixerno.space (real-time exact count, used by live counters)
+  try {
+    const res = await httpGet(
+      `https://mixerno.space/api/youtube-channel-counter/user/${channelId}`,
+      { 'Referer': 'https://livecounts.io/', 'Origin': 'https://livecounts.io' }
+    );
+    const data = await res.json();
+    const counts = data && data.counts;
+    if (Array.isArray(counts)) {
+      const subEntry =
+        counts.find(c => /api\s*sub|subscribers/i.test(c.value && c.name) || c.name === 'youtubeCounter') ||
+        counts.find(c => typeof c.count === 'number') ||
+        counts[0];
+      const n = subEntry && (subEntry.count ?? subEntry.value);
+      if (typeof n === 'number' && n >= 0) return { count: n, source: 'mixerno' };
     }
+    if (data && typeof data.subscriberCount === 'number') return { count: data.subscriberCount, source: 'mixerno' };
+  } catch (e) {
+    // continue to fallback
+  }
+
+  // Fallback: scrape public channel page (rounded for >1000 subs)
+  const res = await httpGet(`https://www.youtube.com/channel/${channelId}/about`);
+  const html = await res.text();
+  // Look for subscriberCountText (rounded display) and various other fields
+  let m = html.match(/"subscriberCount":"(\d+)"/);
+  if (m) return { count: parseInt(m[1], 10), source: 'yt-public-exact' };
+  m = html.match(/"subscriberCountText":\{"simpleText":"([^"]+)"\}/);
+  if (m) {
+    const n = parseAbbreviated(m[1]);
+    if (n != null) return { count: n, source: 'yt-public-rounded' };
+  }
+  m = html.match(/(\d[\d.,]*\s*(?:K|M|B|mil|mi|bi)?)\s*(?:subscribers|inscritos)/i);
+  if (m) {
+    const n = parseAbbreviated(m[1]);
+    if (n != null) return { count: n, source: 'yt-public-text' };
+  }
+  throw new Error('Não consegui extrair inscritos do canal público');
+}
+
+// =============================================================================
+// Instagram — public profile og:description meta tag
+// =============================================================================
+async function fetchInstagram(usernameRaw) {
+  const username = parseUsername(usernameRaw);
+  if (!username) throw new Error('Username inválido');
+
+  const res = await httpGet(`https://www.instagram.com/${encodeURIComponent(username)}/`);
+  const html = await res.text();
+
+  // Strategy 1: og:description meta — works without login, exact for public accounts
+  let m = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+  if (m) {
+    const desc = m[1];
+    const f = desc.match(/([\d.,KMB]+)\s*(?:Followers|Seguidores)/i);
+    if (f) {
+      const n = parseAbbreviated(f[1]);
+      if (n != null) return { count: n, source: 'ig-og' };
+    }
+  }
+
+  // Strategy 2: edge_followed_by from inlined JSON
+  m = html.match(/"edge_followed_by":\{"count":(\d+)\}/);
+  if (m) return { count: parseInt(m[1], 10), source: 'ig-graphql' };
+
+  // Strategy 3: HTML title pattern "X.YK Followers, Y Following"
+  m = html.match(/<title>([^<]*?Followers[^<]*)<\/title>/i);
+  if (m) {
+    const f = m[1].match(/([\d.,KMB]+)\s*Followers/i);
+    if (f) {
+      const n = parseAbbreviated(f[1]);
+      if (n != null) return { count: n, source: 'ig-title' };
+    }
+  }
+
+  throw new Error('Não consegui ler seguidores (perfil privado ou IG bloqueou IP)');
+}
+
+// =============================================================================
+// TikTok — public profile JSON in __UNIVERSAL_DATA_FOR_REHYDRATION__
+// =============================================================================
+async function fetchTikTok(usernameRaw) {
+  const username = parseUsername(usernameRaw);
+  if (!username) throw new Error('Username inválido');
+
+  const res = await httpGet(`https://www.tiktok.com/@${encodeURIComponent(username)}`);
+  const html = await res.text();
+
+  // Strategy 1: __UNIVERSAL_DATA_FOR_REHYDRATION__ (current)
+  let m = html.match(/<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
+  if (m) {
+    try {
+      const json = JSON.parse(m[1]);
+      const stack = [json];
+      while (stack.length) {
+        const node = stack.pop();
+        if (node && typeof node === 'object') {
+          if (typeof node.followerCount === 'number') return { count: node.followerCount, source: 'tt-universal' };
+          for (const k of Object.keys(node)) {
+            const v = node[k];
+            if (v && typeof v === 'object') stack.push(v);
+          }
+        }
+      }
+    } catch (e) { /* fall through */ }
+  }
+
+  // Strategy 2: SIGI_STATE (legacy)
+  m = html.match(/<script[^>]+id="SIGI_STATE"[^>]*>([\s\S]*?)<\/script>/);
+  if (m) {
+    try {
+      const json = JSON.parse(m[1]);
+      const stack = [json];
+      while (stack.length) {
+        const node = stack.pop();
+        if (node && typeof node === 'object') {
+          if (typeof node.followerCount === 'number') return { count: node.followerCount, source: 'tt-sigi' };
+          for (const k of Object.keys(node)) {
+            const v = node[k];
+            if (v && typeof v === 'object') stack.push(v);
+          }
+        }
+      }
+    } catch (e) { /* fall through */ }
+  }
+
+  // Strategy 3: regex on raw HTML
+  m = html.match(/"followerCount":\s*(\d+)/);
+  if (m) return { count: parseInt(m[1], 10), source: 'tt-regex' };
+
+  // Strategy 4: meta description
+  m = html.match(/<meta\s+name="description"\s+content="([^"]+)"/i);
+  if (m) {
+    const f = m[1].match(/([\d.,KMB]+)\s*Followers/i);
+    if (f) {
+      const n = parseAbbreviated(f[1]);
+      if (n != null) return { count: n, source: 'tt-meta' };
+    }
+  }
+
+  throw new Error('Não consegui ler seguidores do TikTok (perfil privado ou TT bloqueou)');
+}
+
+function parseAbbreviated(s) {
+  if (!s) return null;
+  const cleaned = s.toString().replace(/[^\d.,KMBkmb]/g, '').trim();
+  if (!cleaned) return null;
+  const m = cleaned.match(/^([\d.,]+)([KMB])?$/i);
+  if (!m) {
+    const justDigits = cleaned.replace(/\./g, '').replace(/,/g, '');
+    const n = parseInt(justDigits, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  let n = parseFloat(m[1].replace(/,/g, '.'));
+  const suf = (m[2] || '').toUpperCase();
+  if (suf === 'K') n *= 1000;
+  else if (suf === 'M') n *= 1000000;
+  else if (suf === 'B') n *= 1000000000;
+  return Math.round(n);
+}
+
+// =============================================================================
+// Polling
+// =============================================================================
+const PLATFORM_MIN_INTERVAL = {
+  youtube: 5 * 1000,    // mixerno tolera ~3-5s
+  instagram: 60 * 1000, // IG bloqueia se for muito agressivo
+  tiktok: 30 * 1000     // TT idem
+};
+
+async function pollSlot(slotId, slot) {
+  const now = Date.now();
+  const minInt = PLATFORM_MIN_INTERVAL[slot.platform] || 30000;
+  if (lastFetched[slotId] && now - lastFetched[slotId] < minInt) return;
+  lastFetched[slotId] = now;
+
+  try {
+    let result;
+    if (slot.platform === 'youtube') result = await fetchYouTube(slot.identifier);
+    else if (slot.platform === 'instagram') result = await fetchInstagram(slot.identifier);
+    else if (slot.platform === 'tiktok') result = await fetchTikTok(slot.identifier);
+    if (result && typeof result.count === 'number') {
+      lastCounts[slotId] = result.count;
+      lastUpdated[slotId] = Date.now();
+      lastError[slotId] = null;
+    }
+  } catch (e) {
+    lastError[slotId] = (e && e.message) || String(e);
+  }
+}
+
+function startPolling(config) {
+  stopPolling();
+  const tick = async () => {
+    const tasks = [];
+    for (const slotId of SLOTS) {
+      const slot = config[slotId];
+      if (slot && slot.platform && slot.identifier) tasks.push(pollSlot(slotId, slot));
+    }
+    await Promise.allSettled(tasks);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('counts-update', {
+        counts: { ...lastCounts },
+        updated: { ...lastUpdated },
+        errors: { ...lastError },
+        config
+      });
+    }
+  };
+  tick();
+  pollTimer = setInterval(tick, 5000);
+}
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// =============================================================================
+// Power save
+// =============================================================================
+function startPowerSaveBlocker() {
+  if (powerSaveId === null || !powerSaveBlocker.isStarted(powerSaveId)) {
+    powerSaveId = powerSaveBlocker.start('prevent-display-sleep');
+  }
+}
+function stopPowerSaveBlocker() {
+  if (powerSaveId !== null && powerSaveBlocker.isStarted(powerSaveId)) {
+    powerSaveBlocker.stop(powerSaveId); powerSaveId = null;
+  }
+}
+
+// =============================================================================
+// Windows
+// =============================================================================
+function hardenLocalWindow(win) {
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) e.preventDefault(); });
+  win.webContents.on('will-attach-webview', (e) => e.preventDefault());
+  if (!IS_DEV) {
+    win.webContents.on('before-input-event', (e, input) => {
+      if ((input.control || input.meta) && input.shift && (input.key === 'I' || input.key === 'i')) e.preventDefault();
+      if (input.key === 'F12') e.preventDefault();
+    });
+  }
+}
+
+function createSetupWindow() {
+  if (setupWindow) { setupWindow.focus(); return; }
+  setupWindow = new BrowserWindow({
+    width: 1100, height: 760,
+    title: 'Configurar contas — Seguidores Tempo Real',
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true, nodeIntegration: false, sandbox: true,
+      webSecurity: true, allowRunningInsecureContent: false, experimentalFeatures: false
+    }
+  });
+  setupWindow.loadFile(path.join(__dirname, 'src', 'setup', 'setup.html'));
+  hardenLocalWindow(setupWindow);
+  setupWindow.on('closed', () => { setupWindow = null; });
+}
+
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    fullscreen: true, autoHideMenuBar: true,
+    title: 'Seguidores em Tempo Real', backgroundColor: '#000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true, nodeIntegration: false, sandbox: true,
+      webSecurity: true, allowRunningInsecureContent: false, experimentalFeatures: false
+    }
+  });
+  Menu.setApplicationMenu(null);
+  mainWindow.loadFile(path.join(__dirname, 'src', 'display', 'display.html'));
+  hardenLocalWindow(mainWindow);
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    stopPolling();
+    stopPowerSaveBlocker();
   });
 }
 
-// Mata pedidos de novas WebContents que tentem usar configurações inseguras.
-app.on('web-contents-created', (_evt, contents) => {
+// =============================================================================
+// IPC
+// =============================================================================
+ipcMain.handle('config:get', () => loadConfig());
+ipcMain.handle('config:save', (_e, cfg) => { saveConfig(sanitizeConfig(cfg)); return true; });
+ipcMain.handle('app:start-display', async (_e, raw) => {
+  const cfg = sanitizeConfig(raw);
+  saveConfig(cfg);
+  if (setupWindow) setupWindow.close();
+  createMainWindow();
+  startPowerSaveBlocker();
+  mainWindow.webContents.once('did-finish-load', () => startPolling(cfg));
+  return { ok: true };
+});
+ipcMain.handle('app:open-setup', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+  stopPolling(); stopPowerSaveBlocker();
+  createSetupWindow();
+  return { ok: true };
+});
+ipcMain.handle('app:exit', () => app.quit());
+ipcMain.handle('display:toggle-fullscreen', () => { if (mainWindow) mainWindow.setFullScreen(!mainWindow.isFullScreen()); });
+ipcMain.handle('account:test', async (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
+  const cfg = loadConfig();
+  const slot = cfg[slotIdRaw];
+  if (!slot || !slot.identifier) return { ok: false, error: 'sem identificador' };
+  try {
+    let result;
+    if (slot.platform === 'youtube') result = await fetchYouTube(slot.identifier);
+    else if (slot.platform === 'instagram') result = await fetchInstagram(slot.identifier);
+    else if (slot.platform === 'tiktok') result = await fetchTikTok(slot.identifier);
+    else return { ok: false, error: 'plataforma inválida' };
+    return { ok: true, count: result.count, source: result.source };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+});
+
+// =============================================================================
+// Boot
+// =============================================================================
+app.on('web-contents-created', (_e, contents) => {
   contents.on('will-attach-webview', (e, webPreferences) => {
-    delete webPreferences.preload;
-    delete webPreferences.preloadURL;
+    delete webPreferences.preload; delete webPreferences.preloadURL;
     webPreferences.nodeIntegration = false;
     webPreferences.contextIsolation = true;
     webPreferences.sandbox = true;
     e.preventDefault();
   });
 });
+
+function applyDefaultSessionHardening() {
+  const def = require('electron').session.defaultSession;
+  def.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
+  def.setPermissionCheckHandler(() => false);
+  def.setDevicePermissionHandler(() => false);
+  def.webRequest.onHeadersReceived((details, cb) => {
+    if (details.url && details.url.startsWith('file://')) {
+      cb({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data:; font-src 'self' data:; connect-src 'none'; " +
+            "object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none';"
+          ]
+        }
+      });
+    } else cb({ responseHeaders: details.responseHeaders });
+  });
+}
 
 app.whenReady().then(() => {
   applyDefaultSessionHardening();
@@ -641,20 +455,14 @@ app.whenReady().then(() => {
   if (hasAny && cfg.__autoStart) {
     createMainWindow();
     startPowerSaveBlocker();
-    mainWindow.webContents.once('did-finish-load', () => {
-      startScraping(cfg);
-    });
+    mainWindow.webContents.once('did-finish-load', () => startPolling(cfg));
   } else {
     createSetupWindow();
   }
 });
 
 app.on('window-all-closed', () => {
-  stopAllScrapers();
-  stopPowerSaveBlocker();
+  stopPolling(); stopPowerSaveBlocker();
   if (process.platform !== 'darwin') app.quit();
 });
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createSetupWindow();
-});
+app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createSetupWindow(); });

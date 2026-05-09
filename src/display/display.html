@@ -6,27 +6,40 @@
   <link rel="stylesheet" href="display.css">
 </head>
 <body>
-  <div class="root">
-    <div class="title">SEGUIDORES EM TEMPO REAL</div>
+  <main class="stage">
 
-    <div class="counter" id="counter">0</div>
+    <header class="brand">
+      <span class="brand-dot" id="brand-dot"></span>
+      <span class="brand-text">SEGUIDORES&nbsp;&nbsp;EM&nbsp;&nbsp;TEMPO&nbsp;&nbsp;REAL</span>
+      <span class="brand-dot" id="brand-dot-2"></span>
+    </header>
 
-    <div class="delta" id="delta">&nbsp;</div>
+    <section class="hero">
+      <div class="counter" id="counter">0</div>
+    </section>
 
-    <div class="breakdown" id="breakdown"></div>
-
-    <div class="footer">
-      <div class="footer-left">
-        <span class="dot live" id="status-dot"></span>
-        <span id="status-text">Iniciando…</span>
-      </div>
-      <div class="footer-right">
-        <span id="updated-text">—</span>
-        <button id="btn-setup" title="Voltar para configurações (Esc)">Config</button>
-        <button id="btn-exit" title="Fechar (Ctrl+Q)">Sair</button>
-      </div>
+    <div class="delta-row">
+      <span class="delta" id="delta">&nbsp;</span>
     </div>
-  </div>
+
+    <section class="grid" id="grid"></section>
+
+    <footer class="bar">
+      <div class="bar-cell bar-left">
+        <span class="bar-label">STATUS</span>
+        <span class="bar-value" id="status-text">iniciando</span>
+      </div>
+      <div class="bar-cell bar-center">
+        <span class="bar-label">ÚLTIMA COLETA</span>
+        <span class="bar-value" id="updated-text">—</span>
+      </div>
+      <div class="bar-cell bar-right">
+        <button id="btn-setup">CONFIG</button>
+        <button id="btn-exit">SAIR</button>
+      </div>
+    </footer>
+
+  </main>
 
   <script src="display.js"></script>
 </body>
