@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Seguidores em Tempo Real</title>
+  <link rel="stylesheet" href="display.css">
+</head>
+<body>
+  <div class="root">
+    <div class="title">SEGUIDORES EM TEMPO REAL</div>
+
+    <div class="counter" id="counter">0</div>
+
+    <div class="delta" id="delta">&nbsp;</div>
+
+    <div class="breakdown" id="breakdown"></div>
+
+    <div class="footer">
+      <div class="footer-left">
+        <span class="dot live" id="status-dot"></span>
+        <span id="status-text">Iniciando…</span>
+      </div>
+      <div class="footer-right">
+        <span id="updated-text">—</span>
+        <button id="btn-setup" title="Voltar para configurações (Esc)">Config</button>
+        <button id="btn-exit" title="Fechar (Ctrl+Q)">Sair</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="display.js"></script>
+</body>
+</html>

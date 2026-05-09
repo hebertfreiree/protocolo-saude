@@ -1,0 +1,133 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0c0c10;
+  color: #e0e0ee;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+  background: linear-gradient(135deg, #0d1b2a 0%, #1b2838 50%, #0d2137 100%);
+  border-bottom: 1px solid #1a3a5c;
+}
+.topbar h1 { font-size: 22px; color: #fff; margin-bottom: 2px; }
+.topbar .subtitle { font-size: 13px; color: #7a9ab8; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #2a3a4a;
+  background: #1a1a2a;
+  color: #cdd5e0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+button:hover { background: #232336; border-color: #3a4a5a; }
+button.primary {
+  background: linear-gradient(135deg, #2266cc, #4499dd);
+  color: #fff;
+  border-color: #4499dd;
+  padding: 11px 22px;
+  font-size: 14px;
+}
+button.primary:hover { background: linear-gradient(135deg, #2a78dd, #55aaee); }
+button.danger { color: #ff7777; border-color: #553333; }
+button.success { color: #66dd99; border-color: #335544; }
+
+main { padding: 24px 32px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.slot {
+  background: #131320;
+  border: 1px solid #1f1f30;
+  border-radius: 14px;
+  padding: 18px;
+}
+.slot-yt { border-top: 3px solid #ff0000; }
+.slot-ig { border-top: 3px solid #c13584; }
+.slot-tt { border-top: 3px solid #00f2ea; }
+
+.slot-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.slot-h h2 {
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #99b0c0;
+}
+.slot-status {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.slot-status.ok { background: #1a3a2a; color: #66dd99; }
+.slot-status.empty { background: #2a2a3a; color: #888899; }
+
+.field { margin-bottom: 10px; }
+.field label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #6688aa;
+  margin-bottom: 4px;
+}
+.field input, .field select {
+  width: 100%;
+  padding: 9px 11px;
+  background: #0d0d18;
+  border: 1px solid #25253a;
+  color: #e0e0ee;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: #4499dd;
+}
+
+.slot-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.help {
+  background: #131320;
+  border-radius: 14px;
+  padding: 18px 22px;
+  border-left: 3px solid #2266cc;
+}
+.help h3 { color: #cdd5e0; font-size: 14px; margin-bottom: 10px; }
+.help ul { padding-left: 22px; line-height: 1.8; font-size: 13px; color: #99aabb; }
+.help code {
+  font-family: 'Consolas', monospace;
+  background: #0a0a14;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #88bbee;
+  font-size: 12px;
+}

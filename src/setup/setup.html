@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Configurar contas — Seguidores Tempo Real</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Seguidores em Tempo Real</h1>
+      <p class="subtitle">Configure as 6 contas (2 YouTube, 2 Instagram, 2 TikTok)</p>
+    </div>
+    <div class="actions">
+      <button id="btn-start" class="primary">Iniciar contagem em tela cheia</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="grid"></section>
+
+    <section class="help">
+      <h3>Como preencher</h3>
+      <ul>
+        <li><b>YouTube</b>: cole o link do canal ou apenas o ID que começa com <code>UC...</code> (ex: <code>UCxtDy586BIg_d9NyFntEwmg</code>). O contador é puxado direto do <b>YouTube Studio</b>, então faça login na conta dona daquele canal.</li>
+        <li><b>Instagram</b>: digite o <code>@usuario</code> (ou cole o link do perfil). Faça login para evitar bloqueio.</li>
+        <li><b>TikTok</b>: digite o <code>@usuario</code> (ou cole o link). Login recomendado.</li>
+        <li>Se uma rede não for usar, deixe em branco — só será somado o que estiver preenchido.</li>
+        <li>O login é salvo no aplicativo (cookies persistem por slot). Cada slot é uma sessão isolada, então você pode logar contas diferentes em <code>YT 1</code> e <code>YT 2</code>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="setup.js"></script>
+</body>
+</html>
