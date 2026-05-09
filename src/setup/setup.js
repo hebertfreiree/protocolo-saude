@@ -59,6 +59,38 @@ function renderSlot(meta) {
 
   const testResult = el('div', { class: 'test-result' });
 
+  const inputs = card; // captured for clearing
+  const oauthState = el('div', { class: 'oauth-state' });
+  const oauthBtn = meta.platform === 'youtube' ? el('button', {
+    onclick: async (e) => {
+      const btn = e.currentTarget;
+      const status = await window.api.oauthStatus(meta.id);
+      if (status.ok) {
+        if (!confirm(`Desconectar Google deste slot (${meta.label})?`)) return;
+        await window.api.oauthLogout(meta.id);
+        oauthState.textContent = '';
+        oauthState.className = 'oauth-state';
+        btn.textContent = 'Conectar Google';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Aguardando login no Chrome…';
+      oauthState.className = 'oauth-state info';
+      oauthState.textContent = 'Abra a aba que apareceu no seu navegador e autorize.';
+      const r = await window.api.oauthLogin(meta.id);
+      btn.disabled = false;
+      if (r.ok) {
+        oauthState.className = 'oauth-state ok';
+        oauthState.textContent = '✓ Google conectado — agora a contagem usa a Analytics API';
+        btn.textContent = 'Desconectar Google';
+      } else {
+        oauthState.className = 'oauth-state err';
+        oauthState.textContent = `✗ ${r.error}`;
+        btn.textContent = 'Conectar Google';
+      }
+    }
+  }, 'Conectar Google') : null;
+
   const actions = el('div', { class: 'slot-actions' },
     el('button', {
       onclick: async (e) => {
@@ -84,13 +116,41 @@ function renderSlot(meta) {
         btn.disabled = false;
         btn.textContent = 'Testar';
       }
-    }, 'Testar')
+    }, 'Testar'),
+    oauthBtn,
+    el('button', {
+      class: 'danger',
+      onclick: async () => {
+        if (data.identifier && !confirm(`Limpar este slot (${meta.label})?`)) return;
+        data.identifier = '';
+        data.label = '';
+        const inputEls = inputs.querySelectorAll('input');
+        inputEls.forEach(i => { i.value = ''; });
+        status.className = 'slot-status empty';
+        status.textContent = 'vazio';
+        testResult.className = 'test-result';
+        testResult.textContent = '';
+        if (meta.platform === 'youtube') await window.api.oauthLogout(meta.id);
+        await window.api.saveConfig(config);
+      }
+    }, 'Limpar')
   );
+
+  if (meta.platform === 'youtube') {
+    window.api.oauthStatus(meta.id).then(s => {
+      if (s.ok && oauthBtn) {
+        oauthBtn.textContent = 'Desconectar Google';
+        oauthState.className = 'oauth-state ok';
+        oauthState.textContent = '✓ Google conectado';
+      }
+    });
+  }
 
   card.appendChild(head);
   card.appendChild(labelField);
   card.appendChild(idField);
   card.appendChild(actions);
+  if (oauthBtn) card.appendChild(oauthState);
   card.appendChild(testResult);
   return card;
 }
@@ -101,10 +161,46 @@ async function init() {
   grid.innerHTML = '';
   SLOTS.forEach(s => grid.appendChild(renderSlot(s)));
 
+  // OAuth credentials section
+  const oauthCfg = await window.api.oauthGetCfg();
+  if (oauthCfg) {
+    document.getElementById('oauth-clientid').value = oauthCfg.clientId || '';
+    if (oauthCfg.hasSecret) document.getElementById('oauth-secret').placeholder = '••••••••• (salvo)';
+  }
+  document.getElementById('oauth-save').addEventListener('click', async () => {
+    const clientId = document.getElementById('oauth-clientid').value.trim();
+    const clientSecret = document.getElementById('oauth-secret').value.trim();
+    if (!clientId) { alert('Cole o Client ID antes de salvar.'); return; }
+    const r = await window.api.oauthSaveCfg({ clientId, clientSecret });
+    if (r.ok) {
+      const btn = document.getElementById('oauth-save');
+      btn.textContent = 'Salvo ✓';
+      setTimeout(() => { btn.textContent = 'Salvar credenciais'; }, 1500);
+    } else {
+      alert(r.error);
+    }
+  });
+  document.getElementById('oauth-help').addEventListener('click', (e) => {
+    e.preventDefault();
+    const c = document.getElementById('oauth-help-content');
+    c.hidden = !c.hidden;
+  });
+
   document.getElementById('btn-start').addEventListener('click', async () => {
     config.__autoStart = true;
     await window.api.saveConfig(config);
     await window.api.startDisplay(config);
+  });
+
+  document.getElementById('btn-clear-all').addEventListener('click', async () => {
+    if (!confirm('Apagar a configuração de TODOS os slots? Isso não desfaz.')) return;
+    for (const slot of SLOTS) {
+      config[slot.id] = { platform: slot.platform, identifier: '', label: '' };
+    }
+    config.__autoStart = false;
+    await window.api.saveConfig(config);
+    grid.innerHTML = '';
+    SLOTS.forEach(s => grid.appendChild(renderSlot(s)));
   });
 }
 

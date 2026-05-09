@@ -1,19 +1,21 @@
 === Como recombinar o app no Windows (Nitro 5) ===
 
-1. Baixe os 3 arquivos para a mesma pasta (ex: Downloads):
+1. Baixe os 6 arquivos da pasta para a mesma pasta no Windows (ex: Downloads):
    - SeguidoresTempoReal.zip.part00
    - SeguidoresTempoReal.zip.part01
    - SeguidoresTempoReal.zip.part02
+   - SeguidoresTempoReal.zip.part03
+   - SeguidoresTempoReal.zip.part04
+   - SeguidoresTempoReal.zip.part05
 
 2. Abra o Prompt de Comando NESSA pasta:
    - Modo facil: na barra de endereco do Explorer, digite "cmd" e tecle Enter.
-   - Ou: Shift + clique direito em uma area vazia da pasta -> "Abrir no Terminal"
 
 3. Cole o comando (selecione a linha toda e Enter):
 
-   copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 SeguidoresTempoReal.zip
+   copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 SeguidoresTempoReal.zip
 
-4. Vai aparecer um arquivo SeguidoresTempoReal.zip de 108 MB.
+4. Vai aparecer um SeguidoresTempoReal.zip de 108 MB.
    Clique direito -> "Extrair tudo".
 
 5. Entre na pasta extraida "Seguidores Tempo Real" e execute:
@@ -22,10 +24,11 @@
    (Como nao esta assinado, o Windows SmartScreen pode pedir confirmacao:
     clique em "Mais informacoes" -> "Executar assim mesmo")
 
->>> ATENCAO: NAO precisa logar em rede social nenhuma. <<<
-   Apenas cole no campo:
-   - YouTube  : Channel ID (UC...) ou link do canal
-   - Instagram: @usuario (perfil precisa ser publico)
-   - TikTok   : @usuario (perfil precisa ser publico)
-
-   Use o botao "Testar" de cada slot pra validar.
+>>> NOVIDADES DESTA VERSAO <<<
+- Sem login das redes (so YouTube tem opcao de login externo opcional).
+- Botao "Limpar" em cada slot e "Limpar tudo" no topo.
+- Instagram agora pega contagem EXATA via API publica web_profile_info (nao mais arredondada para K).
+- TikTok com 2 fontes de fallback (livecounts.io API) caso a pagina publica falhe.
+- YouTube: opcional logar via Chrome real (botao "Conectar Google") usando OAuth + Analytics API
+  para conseguir numero exato (caso contrario fica usando mixerno, ~1k de imprecisao).
+- Tela cheia redesenhada: simetrica, fonte unica (Segoe UI Variable), grade 3x2.

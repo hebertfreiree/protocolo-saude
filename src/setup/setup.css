@@ -41,6 +41,12 @@ button.primary {
   font-size: 14px;
 }
 button.primary:hover { background: #3377ee; border-color: #3377ee; }
+button.danger { color: #ff7788; border-color: #4a2030; }
+button.danger:hover { background: #2a1414; border-color: #5a2535; color: #ff99aa; }
+button.ghost { background: transparent; color: #6a7a90; border-color: #2a2a3a; }
+button.ghost:hover { color: #e8e8f0; border-color: #3a3a55; }
+
+.actions { display: flex; gap: 10px; }
 
 main { padding: 28px 36px; max-width: 1100px; margin: 0 auto; }
 
@@ -126,6 +132,54 @@ main { padding: 28px 36px; max-width: 1100px; margin: 0 auto; }
 .test-result:empty { display: none; }
 .test-result.ok { background: #0e2a1c; color: #66dd99; border: 1px solid #1a3a2a; }
 .test-result.err { background: #2a1414; color: #ff7788; border: 1px solid #4a2020; }
+
+.oauth-card {
+  background: #11111a;
+  border: 1px solid #1f1f2e;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 18px;
+  border-left: 3px solid #ff3344;
+}
+.oauth-h h3 { font-size: 14px; font-weight: 700; color: #d0d4e0; margin-bottom: 4px; }
+.oauth-h .hint { font-size: 12px; color: #8088a0; font-weight: 500; }
+.oauth-fields { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.oauth-fields .field { margin: 0; }
+.oauth-fields .opt { color: #5a708e; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.oauth-actions {
+  grid-column: 1 / -1;
+  display: flex; gap: 10px; align-items: center; margin-top: 4px;
+}
+.link {
+  font-size: 12px; color: #4a99ee; cursor: pointer; text-decoration: none;
+}
+.link:hover { color: #88bbff; text-decoration: underline; }
+.oauth-help {
+  margin-top: 12px;
+  background: #0a0a14;
+  border: 1px solid #1f1f2e;
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+.oauth-help ol { padding-left: 22px; line-height: 1.9; font-size: 13px; color: #8088a0; }
+.oauth-help b { color: #d0d4e0; }
+.oauth-help code {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  background: #11111a; padding: 2px 7px; border-radius: 5px; color: #88aaff;
+  font-size: 12px;
+}
+.oauth-state {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+.oauth-state:empty { display: none; }
+.oauth-state.ok { background: #0e2a1c; color: #66dd99; border: 1px solid #1a3a2a; }
+.oauth-state.err { background: #2a1414; color: #ff7788; border: 1px solid #4a2020; }
+.oauth-state.info { background: #142a4a; color: #88bbff; border: 1px solid #2a3f6a; }
 
 .help {
   background: #11111a;

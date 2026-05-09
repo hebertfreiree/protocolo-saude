@@ -1,8 +1,10 @@
 const { app, BrowserWindow, ipcMain, powerSaveBlocker, net, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const oauth = require('./oauth.js');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'accounts.json');
+const OAUTH_CFG_FILE = path.join(app.getPath('userData'), 'oauth-credentials.json');
 const SLOTS = ['yt1', 'yt2', 'ig1', 'ig2', 'tt1', 'tt2'];
 const IS_DEV = process.argv.includes('--dev') || !app.isPackaged;
 
@@ -47,6 +49,17 @@ function sanitizeConfig(raw) {
   return out;
 }
 
+function loadOAuthCfg() {
+  try {
+    if (fs.existsSync(OAUTH_CFG_FILE)) return JSON.parse(fs.readFileSync(OAUTH_CFG_FILE, 'utf-8'));
+  } catch (e) { /* noop */ }
+  return null;
+}
+function saveOAuthCfg(cfg) {
+  fs.mkdirSync(path.dirname(OAUTH_CFG_FILE), { recursive: true });
+  fs.writeFileSync(OAUTH_CFG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+}
+
 // =============================================================================
 // Identifier parsing
 // =============================================================================
@@ -89,9 +102,21 @@ async function httpGet(url, headers = {}) {
 // =============================================================================
 // YouTube — uses mixerno.space (the API behind livecounts.io)
 // =============================================================================
-async function fetchYouTube(channelIdRaw) {
+async function fetchYouTube(channelIdRaw, slotId) {
   const channelId = parseChannelId(channelIdRaw);
   if (!channelId) throw new Error('Channel ID inválido (precisa começar com UC...)');
+
+  // Strategy 0: OAuth (se o usuário fez login externo neste slot) — mais preciso
+  if (slotId) {
+    const oauthCfg = loadOAuthCfg();
+    const tokens = oauth.loadTokens(app.getPath('userData'), slotId);
+    if (oauthCfg && oauthCfg.clientId && tokens && tokens.refresh_token) {
+      try {
+        const r = await oauth.fetchYouTubeWithOAuth(slotId, oauthCfg, app.getPath('userData'), channelId);
+        return r;
+      } catch (e) { /* cai pro mixerno */ }
+    }
+  }
 
   // Primary: mixerno.space (real-time exact count, used by live counters)
   try {
@@ -134,52 +159,106 @@ async function fetchYouTube(channelIdRaw) {
 }
 
 // =============================================================================
-// Instagram — public profile og:description meta tag
+// Instagram — web_profile_info (API interna, EXATA) + fallbacks
 // =============================================================================
 async function fetchInstagram(usernameRaw) {
   const username = parseUsername(usernameRaw);
   if (!username) throw new Error('Username inválido');
 
-  const res = await httpGet(`https://www.instagram.com/${encodeURIComponent(username)}/`);
-  const html = await res.text();
+  // Strategy 1: Instagram's web_profile_info API — exact count, public profiles
+  try {
+    const res = await httpGet(
+      `https://i.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
+      {
+        'X-IG-App-ID': '936619743392459',
+        'X-ASBD-ID': '198387',
+        'X-IG-WWW-Claim': '0',
+        'Referer': `https://www.instagram.com/${username}/`,
+        'Sec-Fetch-Site': 'same-origin'
+      }
+    );
+    const data = await res.json();
+    const n = data && data.data && data.data.user && data.data.user.edge_followed_by
+      && data.data.user.edge_followed_by.count;
+    if (typeof n === 'number' && n >= 0) return { count: n, source: 'ig-webapi' };
+  } catch (e) { /* try next */ }
 
-  // Strategy 1: og:description meta — works without login, exact for public accounts
-  let m = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+  // Strategy 2: livecounts.io
+  try {
+    const res = await httpGet(
+      `https://api.livecounts.io/instagram-live-follower-counter/stats/${encodeURIComponent(username)}`,
+      { 'Referer': 'https://livecounts.io/', 'Origin': 'https://livecounts.io' }
+    );
+    const data = await res.json();
+    const n = data && (data.followerCount ?? data.followers ?? (data.user && data.user.followerCount));
+    if (typeof n === 'number' && n > 0) return { count: n, source: 'ig-livecounts' };
+  } catch (e) { /* try next */ }
+
+  // Strategy 3: scraping da página pública (rounded)
+  let html;
+  try {
+    const res = await httpGet(`https://www.instagram.com/${encodeURIComponent(username)}/`);
+    html = await res.text();
+  } catch (e) {
+    throw new Error('IG bloqueou ou perfil inexistente');
+  }
+
+  let m = html.match(/"edge_followed_by":\{"count":(\d+)\}/);
+  if (m) return { count: parseInt(m[1], 10), source: 'ig-html-graphql' };
+  m = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
   if (m) {
     const desc = m[1];
     const f = desc.match(/([\d.,KMB]+)\s*(?:Followers|Seguidores)/i);
     if (f) {
       const n = parseAbbreviated(f[1]);
-      if (n != null) return { count: n, source: 'ig-og' };
+      if (n != null) return { count: n, source: 'ig-og (rounded)' };
     }
   }
-
-  // Strategy 2: edge_followed_by from inlined JSON
-  m = html.match(/"edge_followed_by":\{"count":(\d+)\}/);
-  if (m) return { count: parseInt(m[1], 10), source: 'ig-graphql' };
-
-  // Strategy 3: HTML title pattern "X.YK Followers, Y Following"
-  m = html.match(/<title>([^<]*?Followers[^<]*)<\/title>/i);
-  if (m) {
-    const f = m[1].match(/([\d.,KMB]+)\s*Followers/i);
-    if (f) {
-      const n = parseAbbreviated(f[1]);
-      if (n != null) return { count: n, source: 'ig-title' };
-    }
-  }
-
   throw new Error('Não consegui ler seguidores (perfil privado ou IG bloqueou IP)');
 }
 
 // =============================================================================
-// TikTok — public profile JSON in __UNIVERSAL_DATA_FOR_REHYDRATION__
+// TikTok — livecounts.io API (primary) + scraping (fallback)
 // =============================================================================
 async function fetchTikTok(usernameRaw) {
   const username = parseUsername(usernameRaw);
   if (!username) throw new Error('Username inválido');
 
-  const res = await httpGet(`https://www.tiktok.com/@${encodeURIComponent(username)}`);
-  const html = await res.text();
+  // Strategy 0: livecounts.io public API (mais confiável; mesma fonte do TikTok Counter ao vivo)
+  try {
+    const res = await httpGet(
+      `https://tiktok.livecounts.io/user/stats/${encodeURIComponent(username)}`,
+      { 'Referer': 'https://livecounts.io/', 'Origin': 'https://livecounts.io' }
+    );
+    const data = await res.json();
+    const n = data && (data.followerCount ?? data.followers ?? (data.user && data.user.followerCount));
+    if (typeof n === 'number' && n > 0) return { count: n, source: 'tt-livecounts' };
+  } catch (e) { /* fall through */ }
+
+  // Strategy 0b: alternative livecounts endpoint
+  try {
+    const res = await httpGet(
+      `https://api.livecounts.io/tiktok-live-follower-counter/stats/${encodeURIComponent(username)}`,
+      { 'Referer': 'https://livecounts.io/', 'Origin': 'https://livecounts.io' }
+    );
+    const data = await res.json();
+    const n = data && (data.followerCount ?? data.followers ?? (data.user && data.user.followerCount));
+    if (typeof n === 'number' && n > 0) return { count: n, source: 'tt-livecounts2' };
+  } catch (e) { /* fall through */ }
+
+  let html;
+  try {
+    const res = await httpGet(`https://www.tiktok.com/@${encodeURIComponent(username)}`, {
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Upgrade-Insecure-Requests': '1'
+    });
+    html = await res.text();
+  } catch (e) {
+    throw new Error('TikTok bloqueou o acesso (use perfil público; tente de novo em 1min)');
+  }
 
   // Strategy 1: __UNIVERSAL_DATA_FOR_REHYDRATION__ (current)
   let m = html.match(/<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
@@ -271,7 +350,7 @@ async function pollSlot(slotId, slot) {
 
   try {
     let result;
-    if (slot.platform === 'youtube') result = await fetchYouTube(slot.identifier);
+    if (slot.platform === 'youtube') result = await fetchYouTube(slot.identifier, slotId);
     else if (slot.platform === 'instagram') result = await fetchInstagram(slot.identifier);
     else if (slot.platform === 'tiktok') result = await fetchTikTok(slot.identifier);
     if (result && typeof result.count === 'number') {
@@ -397,6 +476,44 @@ ipcMain.handle('app:open-setup', () => {
 });
 ipcMain.handle('app:exit', () => app.quit());
 ipcMain.handle('display:toggle-fullscreen', () => { if (mainWindow) mainWindow.setFullScreen(!mainWindow.isFullScreen()); });
+
+// === OAuth handlers ===
+ipcMain.handle('oauth:get-cfg', () => {
+  const cfg = loadOAuthCfg();
+  if (!cfg) return null;
+  return { clientId: cfg.clientId || '', hasSecret: !!cfg.clientSecret };
+});
+ipcMain.handle('oauth:save-cfg', (_e, { clientId, clientSecret }) => {
+  if (!clientId || typeof clientId !== 'string') return { ok: false, error: 'clientId obrigatório' };
+  saveOAuthCfg({ clientId: clientId.trim(), clientSecret: (clientSecret || '').trim() });
+  return { ok: true };
+});
+ipcMain.handle('oauth:login', async (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
+  const cfg = loadOAuthCfg();
+  if (!cfg || !cfg.clientId) return { ok: false, error: 'Configure o Client ID antes de logar' };
+  try {
+    const tokens = await oauth.startLoginFlow({
+      clientId: cfg.clientId,
+      clientSecret: cfg.clientSecret,
+      userDataPath: app.getPath('userData')
+    });
+    oauth.saveTokens(app.getPath('userData'), slotIdRaw, tokens);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+});
+ipcMain.handle('oauth:logout', (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
+  oauth.clearTokens(app.getPath('userData'), slotIdRaw);
+  return { ok: true };
+});
+ipcMain.handle('oauth:status', (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false };
+  const tokens = oauth.loadTokens(app.getPath('userData'), slotIdRaw);
+  return { ok: !!(tokens && tokens.refresh_token), savedAt: tokens && tokens.saved_at };
+});
 ipcMain.handle('account:test', async (_e, slotIdRaw) => {
   if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
   const cfg = loadConfig();
@@ -404,7 +521,7 @@ ipcMain.handle('account:test', async (_e, slotIdRaw) => {
   if (!slot || !slot.identifier) return { ok: false, error: 'sem identificador' };
   try {
     let result;
-    if (slot.platform === 'youtube') result = await fetchYouTube(slot.identifier);
+    if (slot.platform === 'youtube') result = await fetchYouTube(slot.identifier, slotIdRaw);
     else if (slot.platform === 'instagram') result = await fetchInstagram(slot.identifier);
     else if (slot.platform === 'tiktok') result = await fetchTikTok(slot.identifier);
     else return { ok: false, error: 'plataforma inválida' };

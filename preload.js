@@ -8,6 +8,11 @@ contextBridge.exposeInMainWorld('api', {
   openSetup: () => ipcRenderer.invoke('app:open-setup'),
   exit: () => ipcRenderer.invoke('app:exit'),
   toggleFullscreen: () => ipcRenderer.invoke('display:toggle-fullscreen'),
+  oauthGetCfg: () => ipcRenderer.invoke('oauth:get-cfg'),
+  oauthSaveCfg: (cfg) => ipcRenderer.invoke('oauth:save-cfg', cfg),
+  oauthLogin: (slotId) => ipcRenderer.invoke('oauth:login', slotId),
+  oauthLogout: (slotId) => ipcRenderer.invoke('oauth:logout', slotId),
+  oauthStatus: (slotId) => ipcRenderer.invoke('oauth:status', slotId),
   onCountsUpdate: (handler) => {
     const listener = (_evt, payload) => handler(payload);
     ipcRenderer.on('counts-update', listener);

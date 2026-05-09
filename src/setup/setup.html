@@ -12,11 +12,43 @@
       <p class="subtitle">Sem login. Cole apenas o Channel ID (YouTube) ou @usuário (Instagram/TikTok).</p>
     </div>
     <div class="actions">
+      <button id="btn-clear-all" class="ghost">Limpar tudo</button>
       <button id="btn-start" class="primary">Iniciar contagem em tela cheia</button>
     </div>
   </header>
 
   <main>
+    <section class="oauth-card" id="oauth-card">
+      <div class="oauth-h">
+        <h3>YouTube — login externo (opcional, para contagem exata)</h3>
+        <span class="hint">Sem isso, o YouTube usa o mixerno (~1.000 de imprecisão por arredondamento da API pública).</span>
+      </div>
+      <div class="oauth-fields">
+        <div class="field">
+          <label>OAuth Client ID (Google Cloud Console)</label>
+          <input id="oauth-clientid" type="text" placeholder="123-abc.apps.googleusercontent.com">
+        </div>
+        <div class="field">
+          <label>Client Secret <span class="opt">(opcional para apps "Desktop")</span></label>
+          <input id="oauth-secret" type="password" placeholder="GOCSPX-...">
+        </div>
+        <div class="oauth-actions">
+          <button id="oauth-save" class="ghost">Salvar credenciais</button>
+          <a class="link" href="#" id="oauth-help">Como obter as credenciais?</a>
+        </div>
+      </div>
+      <div class="oauth-help" id="oauth-help-content" hidden>
+        <ol>
+          <li>Vá em <code>console.cloud.google.com</code> → crie ou selecione um projeto.</li>
+          <li>"APIs &amp; Services" → "Library" → ative <b>YouTube Data API v3</b> e <b>YouTube Analytics API</b>.</li>
+          <li>"APIs &amp; Services" → "OAuth consent screen" → External → preencha o básico → adicione seu Gmail em "Test users".</li>
+          <li>"APIs &amp; Services" → "Credentials" → "Create Credentials" → "OAuth client ID" → tipo <b>Desktop app</b>.</li>
+          <li>Copie o <b>Client ID</b> (e o Secret se aparecer) e cole acima.</li>
+          <li>Volte aqui, clique em "Conectar Google" no slot do YouTube.</li>
+        </ol>
+      </div>
+    </section>
+
     <section class="grid" id="grid"></section>
 
     <section class="help">
