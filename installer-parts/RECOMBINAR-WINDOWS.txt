@@ -1,24 +1,20 @@
-=== Como recombinar v3.6 no Windows (Nitro 5) ===
+=== v3.7 — fix: copia o Cookies sem precisar fechar o Chrome ===
 
-CORRECOES v3.6:
-- BUG do PowerShell DPAPI: erro "Nome de caminho vazio" — passei
-  a embutir os paths direto no script (em -Command, $args nao
-  era populado). Agora o "Conectar Studio (Chrome)" deve
-  conseguir desencriptar a master key.
-- NOVO: scraper headless de fallback. Se a API do Studio
-  responder mas o app nao achar o numero, ele agora abre uma
-  janela invisivel no Studio com seus cookies e le o numero
-  direto do DOM (mais lento, mais resistente).
-- Se TUDO falhar, voce ve erro claro no slot com link
-  "Abrir pasta de debug".
+Em v3.6 dava erro EBUSY porque o Chrome trava o arquivo Cookies.
+Agora o app abre o arquivo em modo "compartilhado" (FILE_SHARE_READ|WRITE)
+e copia byte a byte. Se Node falhar, cai num plano B com PowerShell
+.NET FileStream com FileShare.ReadWrite. Tambem copia o -wal junto.
 
 INSTALACAO:
-1. APAGUE pasta antiga "Seguidores Tempo Real" e os zip parts antigos.
-2. Baixe os 7 arquivos com Ctrl+F5 (forcar atualizacao):
-   parts 00 a 06.
-3. cmd nessa pasta:
+1. APAGUE pasta antiga "Seguidores Tempo Real" e parts antigos.
+2. Apaga tambem %APPDATA%\seguidores-tempo-real (factory reset)
+   pra garantir estado limpo:
+   No cmd:
+   rmdir /s /q "%APPDATA%\seguidores-tempo-real"
+3. Baixa os 7 arquivos com Ctrl+F5.
+4. cmd na pasta:
    copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 + SeguidoresTempoReal.zip.part06 SeguidoresTempoReal.zip
-4. Extrai e roda "Seguidores Tempo Real.exe".
-5. No slot YT: "Conectar Studio (Chrome)".
+5. Extrai e roda.
+6. No slot YT: "Conectar Studio (Chrome)".
 
-MD5 esperado: 080b247338a3872148c29b03ea47a94f
+MD5 esperado: 468990297c321029ea5fb7d84d6f0117

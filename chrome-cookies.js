@@ -30,6 +30,62 @@ function edgeUserDataDir() {
   return path.join(localAppData, 'Microsoft', 'Edge', 'User Data');
 }
 
+function copyFileSharedSync(src, dst) {
+  // fs.copyFile do Node falha com EBUSY quando o Chrome está aberto.
+  // Workaround: abre source só pra leitura (Node usa FILE_SHARE_READ|WRITE
+  // internamente em 'r' no Windows), copia bytes manualmente.
+  const fd = fs.openSync(src, 'r');
+  try {
+    const stat = fs.fstatSync(fd);
+    const buf = Buffer.allocUnsafe(stat.size);
+    let read = 0;
+    while (read < stat.size) {
+      const n = fs.readSync(fd, buf, read, stat.size - read, read);
+      if (n === 0) break;
+      read += n;
+    }
+    fs.writeFileSync(dst, buf.slice(0, read));
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function copyFileViaPowerShell(src, dst) {
+  // Plano B: usa .NET FileStream com FileShare.ReadWrite, garante que abre
+  // mesmo com lock do Chrome.
+  const srcEsc = src.replace(/'/g, "''");
+  const dstEsc = dst.replace(/'/g, "''");
+  const ps =
+    `$ErrorActionPreference='Stop';` +
+    `$fs=[System.IO.File]::Open('${srcEsc}',[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::ReadWrite);` +
+    `try{$out=[System.IO.File]::Open('${dstEsc}',[System.IO.FileMode]::Create,[System.IO.FileAccess]::Write,[System.IO.FileShare]::None);` +
+    `try{$fs.CopyTo($out)}finally{$out.Close()}}finally{$fs.Close()}`;
+  return new Promise((resolve, reject) => {
+    execFile('powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', ps],
+      { windowsHide: true, timeout: 15000 },
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error(`PS copy falhou: ${(stderr || err.message).toString().slice(0, 300)}`));
+        resolve();
+      }
+    );
+  });
+}
+
+async function copyLockedFile(src, dst) {
+  // Tenta o caminho rápido primeiro (Node fs com share), depois PowerShell.
+  try {
+    copyFileSharedSync(src, dst);
+    return;
+  } catch (e1) {
+    try {
+      await copyFileViaPowerShell(src, dst);
+    } catch (e2) {
+      throw new Error(`Não consegui copiar Cookies (Chrome ainda esta com o arquivo aberto?): ${e1.message} | ${e2.message}`);
+    }
+  }
+}
+
 function dpapiDecryptViaPowerShell(encryptedBuf) {
   // Escreve o buffer encriptado em arquivo temp, chama PowerShell pra
   // desencriptar via DPAPI (CurrentUser). Os paths são embutidos
@@ -148,9 +204,16 @@ async function getSql() {
 
 async function readCookiesDb(cookiesPath, masterKey, hostFilter) {
   const SQL = await getSql();
-  // Copia o DB pra evitar lock se o Chrome estiver aberto
-  const tmpDb = path.join(os.tmpdir(), `cookies-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-  fs.copyFileSync(cookiesPath, tmpDb);
+  // Copia o DB (e o -wal se existir) pra evitar lock do Chrome
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tmpDb = path.join(os.tmpdir(), `cookies-${stamp}.db`);
+  await copyLockedFile(cookiesPath, tmpDb);
+  // Se houver -wal, copia também (com mesmo prefixo, pra SQLite achar)
+  const walSrc = cookiesPath + '-wal';
+  const walDst = tmpDb + '-wal';
+  if (fs.existsSync(walSrc)) {
+    try { await copyLockedFile(walSrc, walDst); } catch (_) { /* sem WAL ok */ }
+  }
   try {
     const data = fs.readFileSync(tmpDb);
     const db = new SQL.Database(new Uint8Array(data));
@@ -189,6 +252,8 @@ async function readCookiesDb(cookiesPath, masterKey, hostFilter) {
     return cookies;
   } finally {
     try { fs.unlinkSync(tmpDb); } catch (_) {}
+    try { fs.unlinkSync(tmpDb + '-wal'); } catch (_) {}
+    try { fs.unlinkSync(tmpDb + '-shm'); } catch (_) {}
   }
 }
 
