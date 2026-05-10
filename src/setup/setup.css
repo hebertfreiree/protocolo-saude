@@ -133,6 +133,32 @@ main { padding: 28px 36px; max-width: 1100px; margin: 0 auto; }
 .test-result.ok { background: #0e2a1c; color: #66dd99; border: 1px solid #1a3a2a; }
 .test-result.err { background: #2a1414; color: #ff7788; border: 1px solid #4a2020; }
 
+.tampermonkey-card {
+  background: #0e1a14;
+  border: 1px solid #1a3a2a;
+  border-left: 3px solid #66dd99;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 18px;
+}
+.tampermonkey-card .oauth-h h3 { color: #66dd99; }
+.tm-steps { margin-top: 14px; padding-left: 22px; line-height: 2; font-size: 13px; color: #aab8c4; }
+.tm-steps li { margin-bottom: 8px; }
+.tm-steps button { margin-left: 6px; }
+.tm-steps small { color: #5a708e; font-size: 11px; margin-left: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; }
+.tm-status {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #2a2a3a;
+  color: #888899;
+}
+.tm-status.ok { background: #1a3a2a; color: #66dd99; }
+.tm-status.err { background: #2a1414; color: #ff7788; }
+
 .oauth-card {
   background: #11111a;
   border: 1px solid #1f1f2e;

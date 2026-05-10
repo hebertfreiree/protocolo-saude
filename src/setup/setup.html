@@ -18,6 +18,36 @@
   </header>
 
   <main>
+    <section class="tampermonkey-card">
+      <div class="oauth-h">
+        <h3>🟢 Coletor Tempo Real via Tampermonkey (MAIS PRECISO)</h3>
+        <span class="hint">
+          Roda um script no SEU Chrome, na página real do Studio Analytics. Lê o número
+          <b>direto do DOM</b> e manda pro app. Resultado: o mesmo número que aparece
+          no Studio em tempo real. Não precisa de OAuth, cookies, nem nada do gênero.
+        </span>
+      </div>
+      <ol class="tm-steps">
+        <li>
+          Instala o Tampermonkey (1x, 30s):
+          <button class="ghost" id="tm-install-tm">Abrir Tampermonkey no Chrome</button>
+        </li>
+        <li>
+          Clica em "Instalar script" abaixo (o Chrome vai abrir a tela do Tampermonkey perguntando — clica em "Install"):
+          <button class="primary" id="tm-install-script">Instalar script no Tampermonkey</button>
+          <small id="tm-port"></small>
+        </li>
+        <li>
+          Abre o Studio Analytics no seu Chrome e <b>deixa essa aba aberta</b>:
+          <button class="ghost" id="tm-open-studio">Abrir Studio Analytics</button>
+        </li>
+        <li>
+          Status do coletor:
+          <span class="tm-status" id="tm-status">aguardando primeira coleta…</span>
+        </li>
+      </ol>
+    </section>
+
     <section class="oauth-card" id="oauth-card">
       <div class="oauth-h">
         <h3>YouTube — opções de fonte (em ordem de precisão)</h3>

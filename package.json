@@ -27,6 +27,7 @@
       "chrome-cookies.js",
       "studio-fetch.js",
       "studio-scraper.js",
+      "tampermonkey-bridge.js",
       "src/**/*",
       "assets/**/*",
       "package.json",

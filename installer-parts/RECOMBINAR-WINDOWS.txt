@@ -1,20 +1,38 @@
-=== v3.7 — fix: copia o Cookies sem precisar fechar o Chrome ===
+=== v3.8 — Coletor via Tampermonkey (caminho REAL) ===
 
-Em v3.6 dava erro EBUSY porque o Chrome trava o arquivo Cookies.
-Agora o app abre o arquivo em modo "compartilhado" (FILE_SHARE_READ|WRITE)
-e copia byte a byte. Se Node falhar, cai num plano B com PowerShell
-.NET FileStream com FileShare.ReadWrite. Tambem copia o -wal junto.
+NOVA ESTRATEGIA: o app sobe um servidor HTTP local na porta 7777.
+Voce instala um script Tampermonkey no seu Chrome. Quando voce
+abre o YouTube Studio Analytics na pagina de inscritos, o script
+le o numero direto do DOM (no contexto real da sua sessao logada)
+e manda pro servidor local. Resultado: numero EXATO.
 
 INSTALACAO:
-1. APAGUE pasta antiga "Seguidores Tempo Real" e parts antigos.
-2. Apaga tambem %APPDATA%\seguidores-tempo-real (factory reset)
-   pra garantir estado limpo:
-   No cmd:
-   rmdir /s /q "%APPDATA%\seguidores-tempo-real"
-3. Baixa os 7 arquivos com Ctrl+F5.
-4. cmd na pasta:
-   copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 + SeguidoresTempoReal.zip.part06 SeguidoresTempoReal.zip
-5. Extrai e roda.
-6. No slot YT: "Conectar Studio (Chrome)".
+1. APAGUE tudo antigo:
+   - Pasta antiga "Seguidores Tempo Real"
+   - %APPDATA%\seguidores-tempo-real (factory reset)
+     cmd: rmdir /s /q "%APPDATA%\seguidores-tempo-real"
+   - Os zip parts antigos
 
-MD5 esperado: 468990297c321029ea5fb7d84d6f0117
+2. Baixa os 7 arquivos com Ctrl+F5.
+
+3. cmd na pasta:
+   copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 + SeguidoresTempoReal.zip.part06 SeguidoresTempoReal.zip
+
+4. Extrai e roda.
+
+5. Configura o slot YT com o Channel ID. Salva.
+
+6. Na tela de setup, vai aparecer um card VERDE no topo
+   "Coletor Tempo Real via Tampermonkey":
+   a. Clica "Abrir Tampermonkey no Chrome" -> instala a extensao.
+   b. Volta no app, clica "Instalar script no Tampermonkey".
+      O Chrome abre uma pagina do Tampermonkey perguntando se
+      voce quer instalar. Clica em "Install".
+   c. Clica "Abrir Studio Analytics". A pagina abre no Chrome
+      com banner discreto no canto "Coletor ativo".
+   d. Deixa essa aba aberta em segundo plano.
+   e. O status no app vai virar verde com "✓ recebendo dados...".
+
+7. Inicia a contagem em tela cheia. O numero agora bate com Studio.
+
+MD5 esperado: 4928d9aa6746df295c8608d0e4fdf13a

@@ -4,6 +4,7 @@ const fs = require('fs');
 const oauth = require('./oauth.js');
 const studioFetch = require('./studio-fetch.js');
 const studioScraper = require('./studio-scraper.js');
+const tampermonkey = require('./tampermonkey-bridge.js');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'accounts.json');
 const OAUTH_CFG_FILE = path.join(app.getPath('userData'), 'oauth-credentials.json');
@@ -20,6 +21,8 @@ const lastCounts = {};
 const lastUpdated = {};
 const lastError = {};
 const lastFetched = {};
+const lastSource = {};
+let bridgeInfo = null; // { port, server } do tampermonkey-bridge
 
 // =============================================================================
 // Config
@@ -400,6 +403,11 @@ const PLATFORM_MIN_INTERVAL = {
 
 async function pollSlot(slotId, slot) {
   const now = Date.now();
+  // Se Tampermonkey enviou contagem recente (<30s), não chama API/scrape:
+  // o script real do navegador já tem o número exato do DOM do Studio.
+  if (lastSource[slotId] === 'tampermonkey' && lastUpdated[slotId] && now - lastUpdated[slotId] < 30000) {
+    return;
+  }
   const minInt = PLATFORM_MIN_INTERVAL[slot.platform] || 30000;
   if (lastFetched[slotId] && now - lastFetched[slotId] < minInt) return;
   lastFetched[slotId] = now;
@@ -413,6 +421,7 @@ async function pollSlot(slotId, slot) {
       lastCounts[slotId] = result.count;
       lastUpdated[slotId] = Date.now();
       lastError[slotId] = null;
+      lastSource[slotId] = result.source || 'http';
     }
   } catch (e) {
     lastError[slotId] = (e && e.message) || String(e);
@@ -424,6 +433,7 @@ function clearSlotState(slotId) {
   delete lastUpdated[slotId];
   delete lastError[slotId];
   delete lastFetched[slotId];
+  delete lastSource[slotId];
 }
 
 function clearAllState() {
@@ -431,6 +441,7 @@ function clearAllState() {
   for (const k of Object.keys(lastUpdated)) delete lastUpdated[k];
   for (const k of Object.keys(lastError)) delete lastError[k];
   for (const k of Object.keys(lastFetched)) delete lastFetched[k];
+  for (const k of Object.keys(lastSource)) delete lastSource[k];
 }
 
 function startPolling(config) {
@@ -643,6 +654,34 @@ ipcMain.handle('studio:clear', (_e, slotIdRaw) => {
   studioFetch.clearStudioCookies(app.getPath('userData'), slotIdRaw);
   return { ok: true };
 });
+ipcMain.handle('bridge:info', () => {
+  if (!bridgeInfo) return { ok: false };
+  const cfg = loadConfig();
+  const slots = ['yt1', 'yt2']
+    .filter(s => cfg[s] && cfg[s].identifier)
+    .map(s => ({ slot: s, hasChannel: /UC[A-Za-z0-9_-]{20,}/.test(cfg[s].identifier) }));
+  return {
+    ok: true,
+    port: bridgeInfo.port,
+    scriptUrl: `http://127.0.0.1:${bridgeInfo.port}/script.user.js`,
+    slots,
+    recentSources: { ...lastSource },
+    lastUpdated: { ...lastUpdated }
+  };
+});
+ipcMain.handle('bridge:open-external', async (_e, url) => {
+  if (typeof url !== 'string') return { ok: false };
+  // Só permite URLs do nosso servidor local OU tampermonkey.net OU chrome web store
+  if (!/^https?:\/\/(127\.0\.0\.1|localhost):\d+\//.test(url)
+      && !/^https:\/\/(www\.)?tampermonkey\.net\//.test(url)
+      && !/^https:\/\/chrome\.google\.com\/webstore\//.test(url)
+      && !/^https:\/\/studio\.youtube\.com\//.test(url)) {
+    return { ok: false, error: 'URL bloqueada' };
+  }
+  const { shell } = require('electron');
+  await shell.openExternal(url);
+  return { ok: true };
+});
 ipcMain.handle('studio:open-debug', async (_e, slotIdRaw) => {
   if (!SLOTS.includes(slotIdRaw)) return { ok: false };
   const { shell } = require('electron');
@@ -702,8 +741,24 @@ function applyDefaultSessionHardening() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   applyDefaultSessionHardening();
+  // Sobe o servidor local pro userscript Tampermonkey
+  try {
+    bridgeInfo = await tampermonkey.startBridge({
+      getConfigSnapshot: () => loadConfig(),
+      onCount: (slotId, count, source) => {
+        if (!SLOTS.includes(slotId)) return;
+        lastCounts[slotId] = count;
+        lastUpdated[slotId] = Date.now();
+        lastError[slotId] = null;
+        lastSource[slotId] = source || 'tampermonkey';
+      }
+    });
+    console.log('Tampermonkey bridge ouvindo em', bridgeInfo.port);
+  } catch (e) {
+    console.error('Tampermonkey bridge falhou:', e);
+  }
   const cfg = loadConfig();
   const hasAny = SLOTS.some(s => cfg[s] && cfg[s].identifier);
   if (hasAny && cfg.__autoStart) {

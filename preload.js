@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('api', {
   studioStatus: (slotId) => ipcRenderer.invoke('studio:status', slotId),
   studioClear: (slotId) => ipcRenderer.invoke('studio:clear', slotId),
   studioOpenDebug: (slotId) => ipcRenderer.invoke('studio:open-debug', slotId),
+  bridgeInfo: () => ipcRenderer.invoke('bridge:info'),
+  bridgeOpenExternal: (url) => ipcRenderer.invoke('bridge:open-external', url),
   onCountsUpdate: (handler) => {
     const listener = (_evt, payload) => handler(payload);
     ipcRenderer.on('counts-update', listener);

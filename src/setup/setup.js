@@ -217,6 +217,50 @@ async function init() {
   grid.innerHTML = '';
   SLOTS.forEach(s => grid.appendChild(renderSlot(s)));
 
+  // Tampermonkey section
+  try {
+    const info = await window.api.bridgeInfo();
+    if (info && info.ok) {
+      const portEl = document.getElementById('tm-port');
+      if (portEl) portEl.textContent = `(servidor local em http://127.0.0.1:${info.port})`;
+      document.getElementById('tm-install-tm').addEventListener('click', () =>
+        window.api.bridgeOpenExternal('https://www.tampermonkey.net/'));
+      document.getElementById('tm-install-script').addEventListener('click', () =>
+        window.api.bridgeOpenExternal(info.scriptUrl));
+      document.getElementById('tm-open-studio').addEventListener('click', () => {
+        // Abre o Studio do primeiro slot YT configurado
+        const ytSlot = (config.yt1 && config.yt1.identifier) ? config.yt1
+                     : (config.yt2 && config.yt2.identifier) ? config.yt2 : null;
+        if (!ytSlot) {
+          alert('Preencha o Channel ID em pelo menos um slot YT antes.');
+          return;
+        }
+        const m = ytSlot.identifier.match(/(UC[A-Za-z0-9_-]{20,})/);
+        const channelId = m ? m[1] : ytSlot.identifier;
+        const url = `https://studio.youtube.com/channel/${channelId}/analytics/tab-overview/period-default/explore?entity_type=CHANNEL&entity_id=${channelId}&time_period=4_weeks&explore_type=SUBSCRIBERS`;
+        window.api.bridgeOpenExternal(url);
+      });
+      // Status: poll periódico de bridgeInfo pra mostrar quando o script enviar dados
+      const statusEl = document.getElementById('tm-status');
+      const updateStatus = async () => {
+        const i = await window.api.bridgeInfo();
+        if (!i || !i.ok) { statusEl.textContent = 'servidor local não está rodando'; statusEl.className = 'tm-status err'; return; }
+        const slotsRecebendo = Object.entries(i.recentSources || {})
+          .filter(([k, v]) => /tampermonkey/.test(v) && i.lastUpdated[k] && (Date.now() - i.lastUpdated[k]) < 30000)
+          .map(([k]) => k);
+        if (slotsRecebendo.length > 0) {
+          statusEl.textContent = `✓ recebendo dados de ${slotsRecebendo.length} slot(s): ${slotsRecebendo.join(', ')}`;
+          statusEl.className = 'tm-status ok';
+        } else {
+          statusEl.textContent = 'aguardando script enviar dados (abra o Studio no Chrome após instalar o script)';
+          statusEl.className = 'tm-status';
+        }
+      };
+      updateStatus();
+      setInterval(updateStatus, 3000);
+    }
+  } catch (e) { /* noop */ }
+
   // OAuth credentials section
   const oauthCfg = await window.api.oauthGetCfg();
   if (oauthCfg) {
