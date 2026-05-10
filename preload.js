@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('api', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   saveConfig: (cfg) => ipcRenderer.invoke('config:save', cfg),
+  clearSlotState: (slotId) => ipcRenderer.invoke('slot:clear-state', slotId),
   testSlot: (slotId) => ipcRenderer.invoke('account:test', slotId),
   startDisplay: (cfg) => ipcRenderer.invoke('app:start-display', cfg),
   openSetup: () => ipcRenderer.invoke('app:open-setup'),

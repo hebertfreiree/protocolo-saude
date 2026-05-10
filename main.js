@@ -363,8 +363,24 @@ async function pollSlot(slotId, slot) {
   }
 }
 
+function clearSlotState(slotId) {
+  delete lastCounts[slotId];
+  delete lastUpdated[slotId];
+  delete lastError[slotId];
+  delete lastFetched[slotId];
+}
+
+function clearAllState() {
+  for (const k of Object.keys(lastCounts)) delete lastCounts[k];
+  for (const k of Object.keys(lastUpdated)) delete lastUpdated[k];
+  for (const k of Object.keys(lastError)) delete lastError[k];
+  for (const k of Object.keys(lastFetched)) delete lastFetched[k];
+}
+
 function startPolling(config) {
   stopPolling();
+  // Reset estado pra evitar valor "fantasma" de slot limpo no display
+  clearAllState();
   const tick = async () => {
     const tasks = [];
     for (const slotId of SLOTS) {
@@ -373,12 +389,16 @@ function startPolling(config) {
     }
     await Promise.allSettled(tasks);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('counts-update', {
-        counts: { ...lastCounts },
-        updated: { ...lastUpdated },
-        errors: { ...lastError },
-        config
-      });
+      // Filtra: só envia slots que ainda têm identificador na config atual.
+      const counts = {}, updated = {}, errors = {};
+      for (const slotId of SLOTS) {
+        const slot = config[slotId];
+        if (!slot || !slot.identifier) continue;
+        if (slotId in lastCounts) counts[slotId] = lastCounts[slotId];
+        if (slotId in lastUpdated) updated[slotId] = lastUpdated[slotId];
+        if (slotId in lastError) errors[slotId] = lastError[slotId];
+      }
+      mainWindow.webContents.send('counts-update', { counts, updated, errors, config });
     }
   };
   tick();
@@ -459,6 +479,11 @@ function createMainWindow() {
 // =============================================================================
 ipcMain.handle('config:get', () => loadConfig());
 ipcMain.handle('config:save', (_e, cfg) => { saveConfig(sanitizeConfig(cfg)); return true; });
+ipcMain.handle('slot:clear-state', (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false };
+  clearSlotState(slotIdRaw);
+  return { ok: true };
+});
 ipcMain.handle('app:start-display', async (_e, raw) => {
   const cfg = sanitizeConfig(raw);
   saveConfig(cfg);

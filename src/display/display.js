@@ -21,6 +21,11 @@ let lastTotal = null;
 let displayed = 0;
 let target = 0;
 let lastCollectedTs = 0;
+let lastConfigKey = '';
+
+function configKey(cfg) {
+  return Object.keys(SLOT_META).map(k => `${k}=${(cfg && cfg[k] && cfg[k].identifier) || ''}`).join('|');
+}
 
 function fmt(n) { return new Intl.NumberFormat('pt-BR').format(Math.round(n)); }
 
@@ -76,12 +81,26 @@ function renderGrid(payload) {
 
 function update(payload) {
   const counts = payload.counts || {};
+  const cfg = payload.config || {};
+  const ck = configKey(cfg);
+  if (ck !== lastConfigKey) {
+    // Config mudou (slot adicionado/limpo): reseta baseline e display
+    lastConfigKey = ck;
+    lastTotal = null;
+    displayed = 0;
+    target = 0;
+    deltaEl.textContent = '';
+    deltaEl.className = 'delta';
+  }
   let total = 0, anyValid = false, anyError = false;
   for (const k of Object.keys(counts)) {
+    // Só conta se o slot ainda tem identificador na config atual
+    if (!cfg[k] || !cfg[k].identifier) continue;
     if (typeof counts[k] === 'number') { total += counts[k]; anyValid = true; }
   }
   if (payload.errors) {
     for (const k of Object.keys(payload.errors)) {
+      if (!cfg[k] || !cfg[k].identifier) continue;
       if (payload.errors[k] && typeof counts[k] !== 'number') anyError = true;
     }
   }

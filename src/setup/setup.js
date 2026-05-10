@@ -131,6 +131,7 @@ function renderSlot(meta) {
         testResult.className = 'test-result';
         testResult.textContent = '';
         if (meta.platform === 'youtube') await window.api.oauthLogout(meta.id);
+        await window.api.clearSlotState(meta.id);
         await window.api.saveConfig(config);
       }
     }, 'Limpar')
@@ -196,6 +197,8 @@ async function init() {
     if (!confirm('Apagar a configuração de TODOS os slots? Isso não desfaz.')) return;
     for (const slot of SLOTS) {
       config[slot.id] = { platform: slot.platform, identifier: '', label: '' };
+      await window.api.clearSlotState(slot.id);
+      if (slot.platform === 'youtube') await window.api.oauthLogout(slot.id);
     }
     config.__autoStart = false;
     await window.api.saveConfig(config);
