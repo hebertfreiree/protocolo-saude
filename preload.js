@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('api', {
   studioImport: (slotId) => ipcRenderer.invoke('studio:import', slotId),
   studioStatus: (slotId) => ipcRenderer.invoke('studio:status', slotId),
   studioClear: (slotId) => ipcRenderer.invoke('studio:clear', slotId),
+  studioOpenDebug: (slotId) => ipcRenderer.invoke('studio:open-debug', slotId),
   onCountsUpdate: (handler) => {
     const listener = (_evt, payload) => handler(payload);
     ipcRenderer.on('counts-update', listener);

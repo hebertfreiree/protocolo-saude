@@ -107,20 +107,16 @@ async function fetchYouTube(channelIdRaw, slotId) {
   const channelId = parseChannelId(channelIdRaw);
   if (!channelId) throw new Error('Channel ID inválido (precisa começar com UC...)');
 
-  // Strategy -1: Studio cookies importados do Chrome (mais EXATO — mesmo número
+  // Strategy -1: Studio cookies importados do Chrome (EXATO — mesmo número
   // que aparece em studio.youtube.com/.../explore_type=SUBSCRIBERS)
+  // Se cookies foram importados, USA SÓ ELES. Não cai no mixerno silenciosamente
+  // (caso contrário o usuário vê 1.800.000 sem saber por quê).
   if (slotId) {
     const stored = studioFetch.loadStudioCookies(app.getPath('userData'), slotId);
     if (stored && stored.cookies) {
-      try {
-        const r = await studioFetch.fetchStudioCount(channelId, stored.cookies);
-        return r;
-      } catch (e) {
-        // Se for erro de auth, marca pra usuário reimportar; mas continua tentando outras fontes
-        if (/expirad|inválid|401|403/i.test(e.message || '')) {
-          // não loga em loop
-        }
-      }
+      const dumpDir = path.join(app.getPath('userData'), 'debug', slotId);
+      const r = await studioFetch.fetchStudioCount(channelId, stored.cookies, { dumpDir });
+      return r;
     }
   }
 
@@ -606,15 +602,20 @@ ipcMain.handle('studio:import', async (_e, slotIdRaw) => {
     const channelIdRaw = cfg[slotIdRaw] && cfg[slotIdRaw].identifier;
     const channelId = channelIdRaw ? parseChannelId(channelIdRaw) : null;
     let testCount = null;
+    let testHint = null;
+    let testAttempt = null;
     if (channelId) {
+      const dumpDir = path.join(app.getPath('userData'), 'debug', slotIdRaw);
       try {
-        const r = await studioFetch.fetchStudioCount(channelId, byName);
+        const r = await studioFetch.fetchStudioCount(channelId, byName, { dumpDir });
         testCount = r.count;
+        testHint = r.hint;
+        testAttempt = r.attempt;
       } catch (e) {
-        return { ok: false, error: `Cookies importados de ${browser}, mas Studio rejeitou: ${e.message}` };
+        return { ok: false, error: `Cookies importados de ${browser}, mas Studio rejeitou: ${e.message}`, debugDir: dumpDir };
       }
     }
-    return { ok: true, browser, cookieCount: cookies.length, testCount };
+    return { ok: true, browser, cookieCount: cookies.length, testCount, testHint, testAttempt };
   } catch (e) {
     return { ok: false, error: (e && e.message) || String(e) };
   }
@@ -628,6 +629,14 @@ ipcMain.handle('studio:clear', (_e, slotIdRaw) => {
   if (!SLOTS.includes(slotIdRaw)) return { ok: false };
   studioFetch.clearStudioCookies(app.getPath('userData'), slotIdRaw);
   return { ok: true };
+});
+ipcMain.handle('studio:open-debug', async (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false };
+  const { shell } = require('electron');
+  const dumpDir = path.join(app.getPath('userData'), 'debug', slotIdRaw);
+  fs.mkdirSync(dumpDir, { recursive: true });
+  await shell.openPath(dumpDir);
+  return { ok: true, path: dumpDir };
 });
 ipcMain.handle('account:test', async (_e, slotIdRaw) => {
   if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };

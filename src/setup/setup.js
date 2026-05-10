@@ -87,12 +87,16 @@ function renderSlot(meta) {
       btn.disabled = false;
       if (r.ok) {
         studioState.className = 'oauth-state ok';
-        const tc = (r.testCount != null) ? ` Test = ${format(r.testCount)} inscritos.` : '';
+        const tc = (r.testCount != null)
+          ? ` Test = ${format(r.testCount)} inscritos (endpoint: ${r.testAttempt || '?'}, campo: ${r.testHint || '?'}).`
+          : '';
         studioState.textContent = `✓ Cookies importados de ${r.browser} (${r.cookieCount}).${tc}`;
         btn.textContent = 'Desconectar Studio (cookies)';
       } else {
         studioState.className = 'oauth-state err';
-        studioState.textContent = `✗ ${r.error}`;
+        studioState.innerHTML = `✗ ${r.error} <a href="#" id="open-debug-${meta.id}" class="link">Abrir pasta de debug</a>`;
+        const link = studioState.querySelector(`#open-debug-${meta.id}`);
+        if (link) link.addEventListener('click', (ev) => { ev.preventDefault(); window.api.studioOpenDebug(meta.id); });
         btn.textContent = 'Conectar Studio (Chrome)';
       }
     }

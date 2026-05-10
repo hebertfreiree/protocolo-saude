@@ -1,35 +1,24 @@
-=== Como recombinar o app no Windows (Nitro 5) — v3.4 ===
+=== Como recombinar v3.5 no Windows (Nitro 5) ===
 
-Esta versao tem 7 arquivos (antes eram 6).
+NOVO em v3.5:
+- Endpoint do Studio agora tenta 3 caminhos (analytics/get_screen,
+  analytics/get_card_data, creator/get_creator_videos) e usa o
+  primeiro que devolver um numero valido.
+- Extracao do numero ficou bem mais robusta (paths conhecidos do
+  Innertube + heuristica de campos "metric: SUBSCRIBERS").
+- Se o Studio retornar mas o app nao achar o numero, ele NAO cai
+  silenciosamente no mixerno: agora aparece o erro no slot, com
+  link "Abrir pasta de debug". A pasta tem o JSON cru das respostas
+  -- voce pode abrir, copiar trechos e me mandar pra eu ajustar.
 
-1. APAGUE a pasta antiga "Seguidores Tempo Real" antes de extrair.
-
-2. Baixe os 7 arquivos para a mesma pasta no Windows:
-   - SeguidoresTempoReal.zip.part00
-   - SeguidoresTempoReal.zip.part01
-   - SeguidoresTempoReal.zip.part02
-   - SeguidoresTempoReal.zip.part03
-   - SeguidoresTempoReal.zip.part04
-   - SeguidoresTempoReal.zip.part05
-   - SeguidoresTempoReal.zip.part06
-
-3. Abra o cmd nessa pasta (na barra de endereco do Explorer, digite "cmd" + Enter).
-
-4. Cole o comando:
-
+INSTALACAO:
+1. APAGUE a pasta antiga "Seguidores Tempo Real".
+2. Baixe os 7 arquivos (parts 00 a 06) na mesma pasta.
+3. cmd nessa pasta:
    copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 + SeguidoresTempoReal.zip.part06 SeguidoresTempoReal.zip
+4. Extrai e roda "Seguidores Tempo Real.exe".
+5. No slot YT clica em "Conectar Studio (Chrome)".
+   - Se aparecer "Test = 1.802.026 inscritos" -> tudo certo, fonte yt-studio-cookies.
+   - Se aparecer erro -> clica em "Abrir pasta de debug" e me manda os arquivos JSON.
 
-5. Extraia o SeguidoresTempoReal.zip.
-
-6. Entre na pasta "Seguidores Tempo Real" e execute "Seguidores Tempo Real.exe".
-
->>> NOVIDADES v3.4 <<<
-- NOVO: botao "Conectar Studio (Chrome)" em cada slot YT.
-  - Pre-requisito: voce precisa estar logado em studio.youtube.com no seu Chrome.
-  - O app le os cookies do seu Chrome (descriptografando com a sua chave DPAPI do Windows).
-  - Depois disso, chama a mesma API interna que a pagina do Studio chama, com auth SAPISIDHASH.
-  - Resultado: o numero exibido sera IDENTICO ao da pagina do Studio em tempo real.
-  - Nada sai do seu PC. Os cookies ficam armazenados criptografados em userData.
-- Cookies expiram em ~2 semanas. Quando expirarem, basta clicar de novo em "Conectar Studio (Chrome)".
-
-MD5 esperado do zip recombinado: 2b0195d3271e94813eb59a6a63af95be
+MD5 esperado do zip recombinado: 4d9d2ba069a143c4e836c5b08847eb49
