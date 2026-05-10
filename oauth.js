@@ -215,35 +215,48 @@ async function getAccessToken(slotId, oauthCfg, userDataPath) {
 async function fetchYouTubeWithOAuth(slotId, oauthCfg, userDataPath, channelId) {
   const accessToken = await getAccessToken(slotId, oauthCfg, userDataPath);
 
-  // 1) Channel statistics (rounded for >1k mas é mais consistente que mixerno)
+  // 1) Channel snippet (creation date) + statistics (rounded fallback)
   const chRes = await net.fetch(
-    `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(channelId)}`,
+    `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${encodeURIComponent(channelId)}`,
     { headers: { 'Authorization': `Bearer ${accessToken}` } }
   );
   if (!chRes.ok) throw new Error(`YT channels API ${chRes.status}`);
   const chData = await chRes.json();
-  const baseCount = chData.items && chData.items[0] && chData.items[0].statistics
-    ? parseInt(chData.items[0].statistics.subscriberCount, 10) : null;
+  if (!chData.items || !chData.items[0]) throw new Error('Canal não encontrado');
+  const item = chData.items[0];
+  const baseCount = item.statistics ? parseInt(item.statistics.subscriberCount, 10) : null;
+  const created = (item.snippet && item.snippet.publishedAt) || '2005-04-23';
+  const startDate = created.slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
 
-  // 2) Analytics API: subs ganhos/perdidos hoje (precisão melhor; só funciona pro DONO do canal)
+  // 2) YouTube Analytics API: soma lifetime gains - losses.
+  //    Para o DONO do canal, esses valores NÃO são arredondados.
+  //    Total atual = total ganhos - total perdas (desde a criação).
   try {
-    const today = new Date().toISOString().slice(0, 10);
     const aRes = await net.fetch(
-      `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&startDate=${today}&endDate=${today}&metrics=subscribersGained,subscribersLost`,
+      `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE` +
+      `&startDate=${startDate}&endDate=${today}` +
+      `&metrics=subscribersGained,subscribersLost`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     );
     if (aRes.ok) {
       const a = await aRes.json();
       if (a.rows && a.rows[0]) {
-        const gained = a.rows[0][0] || 0;
-        const lost = a.rows[0][1] || 0;
-        const adjusted = (baseCount || 0) + gained - lost;
-        if (adjusted > 0) return { count: adjusted, source: 'yt-oauth-analytics' };
+        const gained = Number(a.rows[0][0]) || 0;
+        const lost = Number(a.rows[0][1]) || 0;
+        const exact = gained - lost;
+        if (exact > 0) return { count: exact, source: 'yt-analytics-lifetime' };
       }
+    } else {
+      // Log mas não trava: cai no fallback do channels API
+      try { console.error('Analytics API err:', aRes.status, (await aRes.text()).slice(0, 200)); } catch (_) {}
     }
-  } catch (_) { /* fallback no baseCount */ }
+  } catch (e) {
+    console.error('Analytics fetch erro:', e && e.message);
+  }
 
-  if (baseCount != null) return { count: baseCount, source: 'yt-oauth-channels' };
+  // 3) Fallback: contagem arredondada do channels API
+  if (baseCount != null) return { count: baseCount, source: 'yt-oauth-channels-rounded' };
   throw new Error('Sem dados do canal');
 }
 

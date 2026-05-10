@@ -159,31 +159,80 @@ async function fetchYouTube(channelIdRaw, slotId) {
 }
 
 // =============================================================================
-// Instagram — web_profile_info (API interna, EXATA) + fallbacks
+// Instagram — múltiplas estratégias para tentar pegar EXATO sem login
 // =============================================================================
 async function fetchInstagram(usernameRaw) {
   const username = parseUsername(usernameRaw);
   if (!username) throw new Error('Username inválido');
 
-  // Strategy 1: Instagram's web_profile_info API — exact count, public profiles
+  const igHeadersBase = {
+    'X-IG-App-ID': '936619743392459',
+    'X-ASBD-ID': '198387',
+    'X-IG-WWW-Claim': '0',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'Referer': `https://www.instagram.com/${username}/`,
+    'Origin': 'https://www.instagram.com',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9'
+  };
+
+  // Strategy 1: instagram.com/api/v1/users/web_profile_info (mesma origem)
   try {
     const res = await httpGet(
-      `https://i.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
-      {
-        'X-IG-App-ID': '936619743392459',
-        'X-ASBD-ID': '198387',
-        'X-IG-WWW-Claim': '0',
-        'Referer': `https://www.instagram.com/${username}/`,
-        'Sec-Fetch-Site': 'same-origin'
-      }
+      `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
+      igHeadersBase
     );
     const data = await res.json();
-    const n = data && data.data && data.data.user && data.data.user.edge_followed_by
-      && data.data.user.edge_followed_by.count;
+    const n = data?.data?.user?.edge_followed_by?.count;
     if (typeof n === 'number' && n >= 0) return { count: n, source: 'ig-webapi' };
   } catch (e) { /* try next */ }
 
-  // Strategy 2: livecounts.io
+  // Strategy 2: i.instagram.com (mobile API, mesma rota)
+  try {
+    const res = await httpGet(
+      `https://i.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
+      igHeadersBase
+    );
+    const data = await res.json();
+    const n = data?.data?.user?.edge_followed_by?.count;
+    if (typeof n === 'number' && n >= 0) return { count: n, source: 'ig-webapi-i' };
+  } catch (e) { /* try next */ }
+
+  // Strategy 3: scraping inline JSON dentro da página pública
+  let html;
+  try {
+    const res = await httpGet(`https://www.instagram.com/${encodeURIComponent(username)}/`, {
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Upgrade-Insecure-Requests': '1',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+    });
+    html = await res.text();
+  } catch (e) {
+    html = '';
+  }
+  if (html) {
+    // edge_followed_by.count (preferencial — exato)
+    let m = html.match(/"edge_followed_by":\{"count":(\d+)\}/);
+    if (m) return { count: parseInt(m[1], 10), source: 'ig-html-graphql' };
+    m = html.match(/"follower_count":(\d+)/);
+    if (m) return { count: parseInt(m[1], 10), source: 'ig-html-fc' };
+    // og:description (rounded — só como último recurso)
+    m = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+    if (m) {
+      const f = m[1].match(/([\d.,KMB]+)\s*(?:Followers|Seguidores)/i);
+      if (f) {
+        const n = parseAbbreviated(f[1]);
+        if (n != null) return { count: n, source: 'ig-og (rounded)' };
+      }
+    }
+  }
+
+  // Strategy 4: livecounts.io (último fallback)
   try {
     const res = await httpGet(
       `https://api.livecounts.io/instagram-live-follower-counter/stats/${encodeURIComponent(username)}`,
@@ -192,28 +241,8 @@ async function fetchInstagram(usernameRaw) {
     const data = await res.json();
     const n = data && (data.followerCount ?? data.followers ?? (data.user && data.user.followerCount));
     if (typeof n === 'number' && n > 0) return { count: n, source: 'ig-livecounts' };
-  } catch (e) { /* try next */ }
+  } catch (e) { /* fim */ }
 
-  // Strategy 3: scraping da página pública (rounded)
-  let html;
-  try {
-    const res = await httpGet(`https://www.instagram.com/${encodeURIComponent(username)}/`);
-    html = await res.text();
-  } catch (e) {
-    throw new Error('IG bloqueou ou perfil inexistente');
-  }
-
-  let m = html.match(/"edge_followed_by":\{"count":(\d+)\}/);
-  if (m) return { count: parseInt(m[1], 10), source: 'ig-html-graphql' };
-  m = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
-  if (m) {
-    const desc = m[1];
-    const f = desc.match(/([\d.,KMB]+)\s*(?:Followers|Seguidores)/i);
-    if (f) {
-      const n = parseAbbreviated(f[1]);
-      if (n != null) return { count: n, source: 'ig-og (rounded)' };
-    }
-  }
   throw new Error('Não consegui ler seguidores (perfil privado ou IG bloqueou IP)');
 }
 
