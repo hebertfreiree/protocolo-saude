@@ -31,29 +31,35 @@ function edgeUserDataDir() {
 }
 
 function dpapiDecryptViaPowerShell(encryptedBuf) {
-  // Escreve o buffer encriptado em arquivo temp, chama PowerShell pra desencriptar,
-  // lê o resultado. Evita escapes complicados de base64/stdin.
+  // Escreve o buffer encriptado em arquivo temp, chama PowerShell pra
+  // desencriptar via DPAPI (CurrentUser). Os paths são embutidos
+  // diretamente no script (com -Command, $args nem sempre é populado
+  // dependendo da versão do PowerShell).
   const tmpDir = os.tmpdir();
-  const inFile = path.join(tmpDir, `dpapi-in-${Date.now()}-${Math.random().toString(36).slice(2)}.bin`);
-  const outFile = path.join(tmpDir, `dpapi-out-${Date.now()}-${Math.random().toString(36).slice(2)}.bin`);
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const inFile = path.join(tmpDir, `dpapi-in-${stamp}.bin`);
+  const outFile = path.join(tmpDir, `dpapi-out-${stamp}.bin`);
   fs.writeFileSync(inFile, encryptedBuf);
 
-  const ps = `
-$ErrorActionPreference='Stop'
-Add-Type -AssemblyName System.Security
-$inp = [System.IO.File]::ReadAllBytes($args[0])
-$out = [System.Security.Cryptography.ProtectedData]::Unprotect($inp,$null,'CurrentUser')
-[System.IO.File]::WriteAllBytes($args[1],$out)
-`;
+  // Escapa aspas simples para o literal string de PowerShell (' -> '')
+  const inEsc = inFile.replace(/'/g, "''");
+  const outEsc = outFile.replace(/'/g, "''");
+
+  const ps =
+    `$ErrorActionPreference='Stop';` +
+    `Add-Type -AssemblyName System.Security;` +
+    `$inp=[System.IO.File]::ReadAllBytes('${inEsc}');` +
+    `$out=[System.Security.Cryptography.ProtectedData]::Unprotect($inp,$null,'CurrentUser');` +
+    `[System.IO.File]::WriteAllBytes('${outEsc}',$out)`;
 
   return new Promise((resolve, reject) => {
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps, inFile, outFile],
-      { windowsHide: true, timeout: 15000 },
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', ps],
+      { windowsHide: true, timeout: 20000 },
       (err, stdout, stderr) => {
         try { fs.unlinkSync(inFile); } catch (_) {}
         if (err) {
           try { fs.unlinkSync(outFile); } catch (_) {}
-          return reject(new Error(`DPAPI falhou: ${stderr || err.message}`));
+          return reject(new Error(`DPAPI falhou: ${(stderr || err.message || '').toString().slice(0, 300)}`));
         }
         try {
           const buf = fs.readFileSync(outFile);

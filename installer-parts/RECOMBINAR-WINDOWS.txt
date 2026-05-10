@@ -1,24 +1,24 @@
-=== Como recombinar v3.5 no Windows (Nitro 5) ===
+=== Como recombinar v3.6 no Windows (Nitro 5) ===
 
-NOVO em v3.5:
-- Endpoint do Studio agora tenta 3 caminhos (analytics/get_screen,
-  analytics/get_card_data, creator/get_creator_videos) e usa o
-  primeiro que devolver um numero valido.
-- Extracao do numero ficou bem mais robusta (paths conhecidos do
-  Innertube + heuristica de campos "metric: SUBSCRIBERS").
-- Se o Studio retornar mas o app nao achar o numero, ele NAO cai
-  silenciosamente no mixerno: agora aparece o erro no slot, com
-  link "Abrir pasta de debug". A pasta tem o JSON cru das respostas
-  -- voce pode abrir, copiar trechos e me mandar pra eu ajustar.
+CORRECOES v3.6:
+- BUG do PowerShell DPAPI: erro "Nome de caminho vazio" — passei
+  a embutir os paths direto no script (em -Command, $args nao
+  era populado). Agora o "Conectar Studio (Chrome)" deve
+  conseguir desencriptar a master key.
+- NOVO: scraper headless de fallback. Se a API do Studio
+  responder mas o app nao achar o numero, ele agora abre uma
+  janela invisivel no Studio com seus cookies e le o numero
+  direto do DOM (mais lento, mais resistente).
+- Se TUDO falhar, voce ve erro claro no slot com link
+  "Abrir pasta de debug".
 
 INSTALACAO:
-1. APAGUE a pasta antiga "Seguidores Tempo Real".
-2. Baixe os 7 arquivos (parts 00 a 06) na mesma pasta.
+1. APAGUE pasta antiga "Seguidores Tempo Real" e os zip parts antigos.
+2. Baixe os 7 arquivos com Ctrl+F5 (forcar atualizacao):
+   parts 00 a 06.
 3. cmd nessa pasta:
    copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 + SeguidoresTempoReal.zip.part06 SeguidoresTempoReal.zip
 4. Extrai e roda "Seguidores Tempo Real.exe".
-5. No slot YT clica em "Conectar Studio (Chrome)".
-   - Se aparecer "Test = 1.802.026 inscritos" -> tudo certo, fonte yt-studio-cookies.
-   - Se aparecer erro -> clica em "Abrir pasta de debug" e me manda os arquivos JSON.
+5. No slot YT: "Conectar Studio (Chrome)".
 
-MD5 esperado do zip recombinado: 4d9d2ba069a143c4e836c5b08847eb49
+MD5 esperado: 080b247338a3872148c29b03ea47a94f

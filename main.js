@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const oauth = require('./oauth.js');
 const studioFetch = require('./studio-fetch.js');
+const studioScraper = require('./studio-scraper.js');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'accounts.json');
 const OAUTH_CFG_FILE = path.join(app.getPath('userData'), 'oauth-credentials.json');
@@ -109,14 +110,26 @@ async function fetchYouTube(channelIdRaw, slotId) {
 
   // Strategy -1: Studio cookies importados do Chrome (EXATO — mesmo número
   // que aparece em studio.youtube.com/.../explore_type=SUBSCRIBERS)
-  // Se cookies foram importados, USA SÓ ELES. Não cai no mixerno silenciosamente
-  // (caso contrário o usuário vê 1.800.000 sem saber por quê).
+  // Se cookies foram importados, USA SÓ ELES (api OU scraper). Não cai no
+  // mixerno silenciosamente (senão o usuário vê 1.800.000 sem saber por quê).
   if (slotId) {
     const stored = studioFetch.loadStudioCookies(app.getPath('userData'), slotId);
     if (stored && stored.cookies) {
       const dumpDir = path.join(app.getPath('userData'), 'debug', slotId);
-      const r = await studioFetch.fetchStudioCount(channelId, stored.cookies, { dumpDir });
-      return r;
+      // 1a: tenta a API Innertube
+      let apiErr = null;
+      try {
+        return await studioFetch.fetchStudioCount(channelId, stored.cookies, { dumpDir });
+      } catch (e) {
+        apiErr = e;
+      }
+      // 1b: cai no scraper headless da página real
+      try {
+        const r = await studioScraper.scrapeStudioCount(slotId, channelId, stored.cookies, { dumpDir });
+        return r;
+      } catch (e2) {
+        throw new Error(`Studio API: ${apiErr ? apiErr.message : 'sem erro'} | Studio scraper: ${e2.message}`);
+      }
     }
   }
 
