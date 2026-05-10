@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('api', {
   oauthLogin: (slotId) => ipcRenderer.invoke('oauth:login', slotId),
   oauthLogout: (slotId) => ipcRenderer.invoke('oauth:logout', slotId),
   oauthStatus: (slotId) => ipcRenderer.invoke('oauth:status', slotId),
+  studioImport: (slotId) => ipcRenderer.invoke('studio:import', slotId),
+  studioStatus: (slotId) => ipcRenderer.invoke('studio:status', slotId),
+  studioClear: (slotId) => ipcRenderer.invoke('studio:clear', slotId),
   onCountsUpdate: (handler) => {
     const listener = (_evt, payload) => handler(payload);
     ipcRenderer.on('counts-update', listener);

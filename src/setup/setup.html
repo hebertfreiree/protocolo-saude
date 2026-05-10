@@ -20,8 +20,12 @@
   <main>
     <section class="oauth-card" id="oauth-card">
       <div class="oauth-h">
-        <h3>YouTube — login externo (opcional, para contagem exata)</h3>
-        <span class="hint">Sem isso, o YouTube usa o mixerno (~1.000 de imprecisão por arredondamento da API pública).</span>
+        <h3>YouTube — opções de fonte (em ordem de precisão)</h3>
+        <span class="hint">
+          <b>1. Studio via cookies do Chrome</b> (recomendado): número idêntico ao do Studio em tempo real. Sem setup. Botão "Conectar Studio (Chrome)" no slot.<br>
+          <b>2. OAuth (YouTube Analytics API)</b>: também exato, mas precisa criar credenciais no Google Cloud (campos abaixo).<br>
+          <b>3. Mixerno (padrão, sem login)</b>: ~1.000 de imprecisão pelo arredondamento da API pública.
+        </span>
       </div>
       <div class="oauth-fields">
         <div class="field">

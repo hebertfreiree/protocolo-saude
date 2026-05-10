@@ -1,0 +1,35 @@
+=== Como recombinar o app no Windows (Nitro 5) — v3.4 ===
+
+Esta versao tem 7 arquivos (antes eram 6).
+
+1. APAGUE a pasta antiga "Seguidores Tempo Real" antes de extrair.
+
+2. Baixe os 7 arquivos para a mesma pasta no Windows:
+   - SeguidoresTempoReal.zip.part00
+   - SeguidoresTempoReal.zip.part01
+   - SeguidoresTempoReal.zip.part02
+   - SeguidoresTempoReal.zip.part03
+   - SeguidoresTempoReal.zip.part04
+   - SeguidoresTempoReal.zip.part05
+   - SeguidoresTempoReal.zip.part06
+
+3. Abra o cmd nessa pasta (na barra de endereco do Explorer, digite "cmd" + Enter).
+
+4. Cole o comando:
+
+   copy /b SeguidoresTempoReal.zip.part00 + SeguidoresTempoReal.zip.part01 + SeguidoresTempoReal.zip.part02 + SeguidoresTempoReal.zip.part03 + SeguidoresTempoReal.zip.part04 + SeguidoresTempoReal.zip.part05 + SeguidoresTempoReal.zip.part06 SeguidoresTempoReal.zip
+
+5. Extraia o SeguidoresTempoReal.zip.
+
+6. Entre na pasta "Seguidores Tempo Real" e execute "Seguidores Tempo Real.exe".
+
+>>> NOVIDADES v3.4 <<<
+- NOVO: botao "Conectar Studio (Chrome)" em cada slot YT.
+  - Pre-requisito: voce precisa estar logado em studio.youtube.com no seu Chrome.
+  - O app le os cookies do seu Chrome (descriptografando com a sua chave DPAPI do Windows).
+  - Depois disso, chama a mesma API interna que a pagina do Studio chama, com auth SAPISIDHASH.
+  - Resultado: o numero exibido sera IDENTICO ao da pagina do Studio em tempo real.
+  - Nada sai do seu PC. Os cookies ficam armazenados criptografados em userData.
+- Cookies expiram em ~2 semanas. Quando expirarem, basta clicar de novo em "Conectar Studio (Chrome)".
+
+MD5 esperado do zip recombinado: 2b0195d3271e94813eb59a6a63af95be

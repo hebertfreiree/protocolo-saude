@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, powerSaveBlocker, net, Menu } = require('el
 const path = require('path');
 const fs = require('fs');
 const oauth = require('./oauth.js');
+const studioFetch = require('./studio-fetch.js');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'accounts.json');
 const OAUTH_CFG_FILE = path.join(app.getPath('userData'), 'oauth-credentials.json');
@@ -106,7 +107,24 @@ async function fetchYouTube(channelIdRaw, slotId) {
   const channelId = parseChannelId(channelIdRaw);
   if (!channelId) throw new Error('Channel ID inválido (precisa começar com UC...)');
 
-  // Strategy 0: OAuth (se o usuário fez login externo neste slot) — mais preciso
+  // Strategy -1: Studio cookies importados do Chrome (mais EXATO — mesmo número
+  // que aparece em studio.youtube.com/.../explore_type=SUBSCRIBERS)
+  if (slotId) {
+    const stored = studioFetch.loadStudioCookies(app.getPath('userData'), slotId);
+    if (stored && stored.cookies) {
+      try {
+        const r = await studioFetch.fetchStudioCount(channelId, stored.cookies);
+        return r;
+      } catch (e) {
+        // Se for erro de auth, marca pra usuário reimportar; mas continua tentando outras fontes
+        if (/expirad|inválid|401|403/i.test(e.message || '')) {
+          // não loga em loop
+        }
+      }
+    }
+  }
+
+  // Strategy 0: OAuth (se o usuário fez login externo neste slot) — mais preciso que mixerno
   if (slotId) {
     const oauthCfg = loadOAuthCfg();
     const tokens = oauth.loadTokens(app.getPath('userData'), slotId);
@@ -567,6 +585,49 @@ ipcMain.handle('oauth:status', (_e, slotIdRaw) => {
   if (!SLOTS.includes(slotIdRaw)) return { ok: false };
   const tokens = oauth.loadTokens(app.getPath('userData'), slotIdRaw);
   return { ok: !!(tokens && tokens.refresh_token), savedAt: tokens && tokens.saved_at };
+});
+
+// === Studio Cookies handlers (caminho EXATO via cookies do Chrome) ===
+ipcMain.handle('studio:import', async (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };
+  if (process.platform !== 'win32') {
+    return { ok: false, error: 'Importar cookies só funciona no Windows (DPAPI)' };
+  }
+  try {
+    const chromeCookies = require('./chrome-cookies.js');
+    const { browser, cookies } = await chromeCookies.readBrowserCookiesForYouTube();
+    const byName = studioFetch.pickCookies(cookies);
+    if (!byName.SAPISID && !byName['__Secure-3PAPISID'] && !byName['__Secure-1PAPISID']) {
+      return { ok: false, error: 'Não logado no Studio neste navegador. Faça login em studio.youtube.com no Chrome e tente de novo.' };
+    }
+    studioFetch.saveStudioCookies(app.getPath('userData'), slotIdRaw, byName);
+    // Validação imediata: tenta uma chamada
+    const cfg = loadConfig();
+    const channelIdRaw = cfg[slotIdRaw] && cfg[slotIdRaw].identifier;
+    const channelId = channelIdRaw ? parseChannelId(channelIdRaw) : null;
+    let testCount = null;
+    if (channelId) {
+      try {
+        const r = await studioFetch.fetchStudioCount(channelId, byName);
+        testCount = r.count;
+      } catch (e) {
+        return { ok: false, error: `Cookies importados de ${browser}, mas Studio rejeitou: ${e.message}` };
+      }
+    }
+    return { ok: true, browser, cookieCount: cookies.length, testCount };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
+});
+ipcMain.handle('studio:status', (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false };
+  const stored = studioFetch.loadStudioCookies(app.getPath('userData'), slotIdRaw);
+  return { ok: !!(stored && stored.cookies), savedAt: stored && stored.saved_at };
+});
+ipcMain.handle('studio:clear', (_e, slotIdRaw) => {
+  if (!SLOTS.includes(slotIdRaw)) return { ok: false };
+  studioFetch.clearStudioCookies(app.getPath('userData'), slotIdRaw);
+  return { ok: true };
 });
 ipcMain.handle('account:test', async (_e, slotIdRaw) => {
   if (!SLOTS.includes(slotIdRaw)) return { ok: false, error: 'invalid_slot' };

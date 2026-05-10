@@ -60,6 +60,44 @@ function renderSlot(meta) {
   const testResult = el('div', { class: 'test-result' });
 
   const inputs = card; // captured for clearing
+  const studioState = el('div', { class: 'oauth-state' });
+  const studioBtn = meta.platform === 'youtube' ? el('button', {
+    class: 'primary',
+    onclick: async (e) => {
+      const btn = e.currentTarget;
+      const status = await window.api.studioStatus(meta.id);
+      if (status.ok) {
+        if (!confirm(`Desconectar Studio (cookies) deste slot (${meta.label})?`)) return;
+        await window.api.studioClear(meta.id);
+        studioState.textContent = '';
+        studioState.className = 'oauth-state';
+        btn.textContent = 'Conectar Studio (Chrome)';
+        return;
+      }
+      if (!data.identifier) {
+        alert('Preencha o Channel ID antes (campo acima).');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Importando cookies do Chrome…';
+      studioState.className = 'oauth-state info';
+      studioState.textContent = 'Lendo Cookies do Chrome (precisa estar logado em studio.youtube.com)…';
+      await window.api.saveConfig(config);
+      const r = await window.api.studioImport(meta.id);
+      btn.disabled = false;
+      if (r.ok) {
+        studioState.className = 'oauth-state ok';
+        const tc = (r.testCount != null) ? ` Test = ${format(r.testCount)} inscritos.` : '';
+        studioState.textContent = `✓ Cookies importados de ${r.browser} (${r.cookieCount}).${tc}`;
+        btn.textContent = 'Desconectar Studio (cookies)';
+      } else {
+        studioState.className = 'oauth-state err';
+        studioState.textContent = `✗ ${r.error}`;
+        btn.textContent = 'Conectar Studio (Chrome)';
+      }
+    }
+  }, 'Conectar Studio (Chrome)') : null;
+
   const oauthState = el('div', { class: 'oauth-state' });
   const oauthBtn = meta.platform === 'youtube' ? el('button', {
     onclick: async (e) => {
@@ -117,6 +155,7 @@ function renderSlot(meta) {
         btn.textContent = 'Testar';
       }
     }, 'Testar'),
+    studioBtn,
     oauthBtn,
     el('button', {
       class: 'danger',
@@ -130,7 +169,10 @@ function renderSlot(meta) {
         status.textContent = 'vazio';
         testResult.className = 'test-result';
         testResult.textContent = '';
-        if (meta.platform === 'youtube') await window.api.oauthLogout(meta.id);
+        if (meta.platform === 'youtube') {
+          await window.api.oauthLogout(meta.id);
+          await window.api.studioClear(meta.id);
+        }
         await window.api.clearSlotState(meta.id);
         await window.api.saveConfig(config);
       }
@@ -138,6 +180,14 @@ function renderSlot(meta) {
   );
 
   if (meta.platform === 'youtube') {
+    window.api.studioStatus(meta.id).then(s => {
+      if (s.ok && studioBtn) {
+        studioBtn.textContent = 'Desconectar Studio (cookies)';
+        studioState.className = 'oauth-state ok';
+        const since = s.savedAt ? ` (importado ${new Date(s.savedAt).toLocaleString('pt-BR')})` : '';
+        studioState.textContent = `✓ Studio conectado via cookies do Chrome${since}`;
+      }
+    });
     window.api.oauthStatus(meta.id).then(s => {
       if (s.ok && oauthBtn) {
         oauthBtn.textContent = 'Desconectar Google';
@@ -151,6 +201,7 @@ function renderSlot(meta) {
   card.appendChild(labelField);
   card.appendChild(idField);
   card.appendChild(actions);
+  if (studioBtn) card.appendChild(studioState);
   if (oauthBtn) card.appendChild(oauthState);
   card.appendChild(testResult);
   return card;
@@ -198,7 +249,10 @@ async function init() {
     for (const slot of SLOTS) {
       config[slot.id] = { platform: slot.platform, identifier: '', label: '' };
       await window.api.clearSlotState(slot.id);
-      if (slot.platform === 'youtube') await window.api.oauthLogout(slot.id);
+      if (slot.platform === 'youtube') {
+        await window.api.oauthLogout(slot.id);
+        await window.api.studioClear(slot.id);
+      }
     }
     config.__autoStart = false;
     await window.api.saveConfig(config);

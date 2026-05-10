@@ -24,17 +24,35 @@
       "main.js",
       "preload.js",
       "oauth.js",
+      "chrome-cookies.js",
+      "studio-fetch.js",
       "src/**/*",
       "assets/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/sql.js/dist/sql-wasm.js",
+      "node_modules/sql.js/dist/sql-wasm.wasm",
+      "node_modules/sql.js/package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/sql.js/dist/sql-wasm.wasm"
     ],
     "directories": {
       "output": "dist"
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "assets/icon.ico"
     },
@@ -46,5 +64,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Seguidores Tempo Real"
     }
+  },
+  "dependencies": {
+    "sql.js": "^1.14.1"
   }
 }
