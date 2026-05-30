@@ -227,8 +227,7 @@ async function init() {
         window.api.bridgeOpenExternal('https://www.tampermonkey.net/'));
       document.getElementById('tm-install-script').addEventListener('click', () =>
         window.api.bridgeOpenExternal(info.scriptUrl));
-      document.getElementById('tm-open-studio').addEventListener('click', () => {
-        // Abre o Studio do primeiro slot YT configurado
+      const openStudio = () => {
         const ytSlot = (config.yt1 && config.yt1.identifier) ? config.yt1
                      : (config.yt2 && config.yt2.identifier) ? config.yt2 : null;
         if (!ytSlot) {
@@ -239,7 +238,42 @@ async function init() {
         const channelId = m ? m[1] : ytSlot.identifier;
         const url = `https://studio.youtube.com/channel/${channelId}/analytics/tab-overview/period-default/explore?entity_type=CHANNEL&entity_id=${channelId}&time_period=4_weeks&explore_type=SUBSCRIBERS`;
         window.api.bridgeOpenExternal(url);
+      };
+      document.getElementById('tm-open-studio').addEventListener('click', openStudio);
+      document.getElementById('tm-open-studio-snip').addEventListener('click', openStudio);
+      document.getElementById('tm-open-studio-bm').addEventListener('click', openStudio);
+
+      // Tabs
+      document.querySelectorAll('.tampermonkey-card .tab').forEach(t => {
+        t.addEventListener('click', () => {
+          document.querySelectorAll('.tampermonkey-card .tab').forEach(x => x.classList.remove('active'));
+          t.classList.add('active');
+          document.querySelectorAll('.tampermonkey-card .tab-panel').forEach(p => {
+            p.hidden = p.dataset.panel !== t.dataset.tab;
+          });
+        });
       });
+
+      // Snippet F12
+      const snippet = await window.api.bridgeGetSnippet();
+      const codeEl = document.getElementById('snippet-code');
+      if (codeEl) codeEl.textContent = snippet || 'erro ao carregar snippet';
+      document.getElementById('copy-snippet').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(snippet);
+          const b = document.getElementById('copy-snippet');
+          b.textContent = '✓ Copiado!';
+          setTimeout(() => { b.textContent = '📋 Copiar código'; }, 1500);
+        } catch (e) { alert('Falha ao copiar: ' + e.message); }
+      });
+
+      // Bookmarklet
+      const bm = await window.api.bridgeGetBookmarklet();
+      const bmEl = document.getElementById('bookmarklet-link');
+      if (bmEl && bm) {
+        bmEl.href = bm;
+        bmEl.title = bm.slice(0, 100) + '...';
+      }
       // Status: poll periódico de bridgeInfo pra mostrar quando o script enviar dados
       const statusEl = document.getElementById('tm-status');
       const updateStatus = async () => {

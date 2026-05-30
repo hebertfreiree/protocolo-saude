@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   studioOpenDebug: (slotId) => ipcRenderer.invoke('studio:open-debug', slotId),
   bridgeInfo: () => ipcRenderer.invoke('bridge:info'),
   bridgeOpenExternal: (url) => ipcRenderer.invoke('bridge:open-external', url),
+  bridgeGetSnippet: () => ipcRenderer.invoke('bridge:get-snippet'),
+  bridgeGetBookmarklet: () => ipcRenderer.invoke('bridge:get-bookmarklet'),
   onCountsUpdate: (handler) => {
     const listener = (_evt, payload) => handler(payload);
     ipcRenderer.on('counts-update', listener);

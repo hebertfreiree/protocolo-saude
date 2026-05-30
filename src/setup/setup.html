@@ -20,32 +20,61 @@
   <main>
     <section class="tampermonkey-card">
       <div class="oauth-h">
-        <h3>🟢 Coletor Tempo Real via Tampermonkey (MAIS PRECISO)</h3>
+        <h3>🟢 Coletor Tempo Real do YouTube Studio (MAIS PRECISO)</h3>
         <span class="hint">
-          Roda um script no SEU Chrome, na página real do Studio Analytics. Lê o número
-          <b>direto do DOM</b> e manda pro app. Resultado: o mesmo número que aparece
-          no Studio em tempo real. Não precisa de OAuth, cookies, nem nada do gênero.
+          Como o Studio só mostra o número exato pra quem está logado (você),
+          o app precisa que VOCÊ rode um pedacinho de código no seu Chrome,
+          na página do Studio. Escolha 1 dos 3 jeitos abaixo.
         </span>
       </div>
-      <ol class="tm-steps">
-        <li>
-          Instala o Tampermonkey (1x, 30s):
-          <button class="ghost" id="tm-install-tm">Abrir Tampermonkey no Chrome</button>
-        </li>
-        <li>
-          Clica em "Instalar script" abaixo (o Chrome vai abrir a tela do Tampermonkey perguntando — clica em "Install"):
-          <button class="primary" id="tm-install-script">Instalar script no Tampermonkey</button>
-          <small id="tm-port"></small>
-        </li>
-        <li>
-          Abre o Studio Analytics no seu Chrome e <b>deixa essa aba aberta</b>:
-          <button class="ghost" id="tm-open-studio">Abrir Studio Analytics</button>
-        </li>
-        <li>
-          Status do coletor:
-          <span class="tm-status" id="tm-status">aguardando primeira coleta…</span>
-        </li>
-      </ol>
+      <div class="tabs">
+        <button class="tab active" data-tab="snippet">📋 Cole no F12 (zero install)</button>
+        <button class="tab" data-tab="bookmark">⭐ Bookmarklet (favorito)</button>
+        <button class="tab" data-tab="tm">🐒 Tampermonkey (auto)</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="snippet">
+        <ol class="tm-steps">
+          <li>
+            <button class="ghost" id="tm-open-studio-snip">Abrir Studio Analytics no seu Chrome</button>
+            (deixe a aba aberta).
+          </li>
+          <li>Na aba do Studio, aperta <code>F12</code> (abre DevTools) → aba <b>Console</b>.</li>
+          <li>
+            Copia o código abaixo e cola no Console, Enter:
+            <button class="primary" id="copy-snippet" style="margin-left:10px">📋 Copiar código</button>
+            <pre id="snippet-code">carregando…</pre>
+          </li>
+          <li>Pra parar: feche a aba ou recarregue (Ctrl+R).</li>
+        </ol>
+      </div>
+
+      <div class="tab-panel" data-panel="bookmark" hidden>
+        <ol class="tm-steps">
+          <li>Mostra a barra de favoritos do Chrome (<code>Ctrl+Shift+B</code>).</li>
+          <li>
+            <b>Arraste</b> este link pra barra de favoritos:
+            <a class="bookmarklet" id="bookmarklet-link" draggable="true">📌 Coletar Inscritos</a>
+            <small style="display:block;margin-top:4px">(ou clique direito no link → "Adicionar aos favoritos")</small>
+          </li>
+          <li>
+            <button class="ghost" id="tm-open-studio-bm">Abrir Studio Analytics no seu Chrome</button>
+          </li>
+          <li>Na página do Studio, clica no favorito → manda 1 coleta pro app. Clica de novo pra atualizar.</li>
+        </ol>
+      </div>
+
+      <div class="tab-panel" data-panel="tm" hidden>
+        <ol class="tm-steps">
+          <li>Instala o Tampermonkey (1x, 30s): <button class="ghost" id="tm-install-tm">Abrir Tampermonkey</button></li>
+          <li>Clica pra instalar o script: <button class="primary" id="tm-install-script">Instalar script</button> <small id="tm-port"></small></li>
+          <li>Abre Studio: <button class="ghost" id="tm-open-studio">Abrir Studio Analytics</button> (deixa aberto)</li>
+        </ol>
+      </div>
+
+      <div style="margin-top:14px">
+        Status do coletor: <span class="tm-status" id="tm-status">aguardando primeira coleta…</span>
+      </div>
     </section>
 
     <section class="oauth-card" id="oauth-card">

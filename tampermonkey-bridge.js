@@ -147,6 +147,65 @@ function genUserscript({ port, slots }) {
 `;
 }
 
+// =============================================================================
+// Snippet curto pra colar no DevTools Console (F12) da página do Studio.
+// SEM extensão, SEM instalação. Roda enquanto a aba estiver aberta.
+// =============================================================================
+function genSnippet({ port }) {
+  // Versão minificada e legível para o usuário ler antes de colar.
+  return `(function(){
+  // Seguidores Tempo Real - coletor F12 (cole no console da pagina do Studio)
+  // O que faz: a cada 5s, le o numero exibido na pagina e manda pro app local.
+  // Pra parar: feche a aba ou recarregue (Ctrl+R).
+  var APP='http://127.0.0.1:${port}/count';
+  var ch=(location.href.match(/channel\\/(UC[A-Za-z0-9_-]+)/)||[])[1];
+  if(!ch){console.warn('Seguidores: abra a pagina do Studio Analytics');return;}
+  function find(){
+    var stack=[document.body],best=null;
+    while(stack.length){
+      var n=stack.pop();
+      if(!n||n.nodeType!==1)continue;
+      var cs=n.children||[];
+      for(var i=0;i<cs.length;i++)stack.push(cs[i]);
+      if(n.shadowRoot)stack.push(n.shadowRoot);
+      if(cs.length>0)continue;
+      var t=(n.textContent||'').trim();
+      if(!/^[\\d.,\\s]{4,15}$/.test(t))continue;
+      var d=t.replace(/[^\\d]/g,'');
+      if(d.length<4||d.length>10)continue;
+      var v=parseInt(d,10);
+      if(v<1000||v>5e9)continue;
+      // Sobe procurando label "Inscritos"
+      var p=n,ok=false;
+      for(var j=0;j<10&&p;j++){
+        var pt=(p.textContent||'').toLowerCase();
+        if(/inscritos?|subscriber/.test(pt)){ok=true;break;}
+        p=p.parentElement||(p.getRootNode&&p.getRootNode().host)||null;
+      }
+      if(ok&&(!best||v>best))best=v;
+    }
+    return best;
+  }
+  function send(v){
+    fetch(APP,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({channelId:ch,count:v,source:'snippet-f12'})})
+      .then(function(){console.log('Seguidores:',v.toLocaleString('pt-BR'));})
+      .catch(function(e){console.warn('Seguidores erro:',e.message);});
+  }
+  function tick(){var v=find();if(v)send(v);}
+  if(window.__seg_timer)clearInterval(window.__seg_timer);
+  window.__seg_timer=setInterval(tick,5000);
+  setTimeout(tick,1500);
+  console.log('%cSeguidores Tempo Real ativo (F12 snippet)','background:#1c8a4d;color:#fff;padding:4px 10px;border-radius:4px');
+})();`;
+}
+
+// Bookmarklet: 1 clique = 1 envio. Usuário clica de novo pra atualizar.
+function genBookmarklet({ port }) {
+  const inner = `var APP='http://127.0.0.1:${port}/count';var ch=(location.href.match(/channel\\/(UC[A-Za-z0-9_-]+)/)||[])[1];if(!ch){alert('Abra a pagina do Studio Analytics');return;}var stack=[document.body],best=null;while(stack.length){var n=stack.pop();if(!n||n.nodeType!==1)continue;var cs=n.children||[];for(var i=0;i<cs.length;i++)stack.push(cs[i]);if(n.shadowRoot)stack.push(n.shadowRoot);if(cs.length>0)continue;var t=(n.textContent||'').trim();if(!/^[\\d.,\\s]{4,15}$/.test(t))continue;var d=t.replace(/[^\\d]/g,'');if(d.length<4||d.length>10)continue;var v=parseInt(d,10);if(v<1000||v>5e9)continue;var p=n,ok=false;for(var j=0;j<10&&p;j++){var pt=(p.textContent||'').toLowerCase();if(/inscritos?|subscriber/.test(pt)){ok=true;break;}p=p.parentElement||(p.getRootNode&&p.getRootNode().host)||null;}if(ok&&(!best||v>best))best=v;}if(!best){alert('Nao achei o numero na pagina');return;}fetch(APP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channelId:ch,count:best,source:'bookmarklet'})}).then(function(){alert('Enviado: '+best.toLocaleString('pt-BR'));}).catch(function(e){alert('Erro: '+e.message);});`;
+  return 'javascript:(function(){' + inner + '})()';
+}
+
 function startBridge({ getConfigSnapshot, onCount }) {
   return new Promise(async (resolve, reject) => {
     const port = await findFreePort();
@@ -181,16 +240,38 @@ function startBridge({ getConfigSnapshot, onCount }) {
         return res.end(genUserscript({ port, slots }));
       }
 
+      // Snippet pra console F12 e bookmarklet
+      if (u.pathname === '/snippet.js') {
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(genSnippet({ port }));
+      }
+      if (u.pathname === '/bookmarklet.js') {
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(genBookmarklet({ port }));
+      }
+
       if (u.pathname === '/count' && req.method === 'POST') {
         let body = '';
         req.on('data', (c) => { body += c; if (body.length > 4096) req.destroy(); });
         req.on('end', () => {
           try {
             const j = JSON.parse(body);
-            if (j && typeof j.slot === 'string' && typeof j.count === 'number' && j.count >= 0 && j.count < 1e10) {
-              onCount(j.slot, j.count, j.source || 'tampermonkey');
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              return res.end(JSON.stringify({ ok: true }));
+            if (j && typeof j.count === 'number' && j.count >= 0 && j.count < 1e10) {
+              // Aceita slot direto OU channelId (resolve via config)
+              let slot = (typeof j.slot === 'string') ? j.slot : null;
+              if (!slot && typeof j.channelId === 'string') {
+                const cfg = getConfigSnapshot();
+                for (const s of ['yt1', 'yt2']) {
+                  if (cfg[s] && cfg[s].identifier && cfg[s].identifier.includes(j.channelId)) {
+                    slot = s; break;
+                  }
+                }
+              }
+              if (slot && ['yt1', 'yt2', 'ig1', 'ig2', 'tt1', 'tt2'].includes(slot)) {
+                onCount(slot, j.count, j.source || 'snippet');
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ ok: true, slot }));
+              }
             }
           } catch (_) {}
           res.writeHead(400);

@@ -664,10 +664,26 @@ ipcMain.handle('bridge:info', () => {
     ok: true,
     port: bridgeInfo.port,
     scriptUrl: `http://127.0.0.1:${bridgeInfo.port}/script.user.js`,
+    snippetUrl: `http://127.0.0.1:${bridgeInfo.port}/snippet.js`,
+    bookmarkletUrl: `http://127.0.0.1:${bridgeInfo.port}/bookmarklet.js`,
     slots,
     recentSources: { ...lastSource },
     lastUpdated: { ...lastUpdated }
   };
+});
+ipcMain.handle('bridge:get-snippet', async () => {
+  if (!bridgeInfo) return null;
+  try {
+    const res = await net.fetch(`http://127.0.0.1:${bridgeInfo.port}/snippet.js`);
+    return await res.text();
+  } catch (e) { return null; }
+});
+ipcMain.handle('bridge:get-bookmarklet', async () => {
+  if (!bridgeInfo) return null;
+  try {
+    const res = await net.fetch(`http://127.0.0.1:${bridgeInfo.port}/bookmarklet.js`);
+    return await res.text();
+  } catch (e) { return null; }
 });
 ipcMain.handle('bridge:open-external', async (_e, url) => {
   if (typeof url !== 'string') return { ok: false };
